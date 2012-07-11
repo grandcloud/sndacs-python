@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="ascii"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+          "DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+  <title>sndacspylib.snda_cs_config</title>
+  <link rel="stylesheet" href="epydoc.css" type="text/css" />
+  <script type="text/javascript" src="epydoc.js"></script>
+</head>
+
+<body bgcolor="white" text="black" link="blue" vlink="#204080"
+      alink="#204080">
+<!-- ==================== NAVIGATION BAR ==================== -->
+<table class="navbar" border="0" width="100%" cellpadding="0"
+       bgcolor="#a0c0ff" cellspacing="0">
+  <tr valign="middle">
+  <!-- Home link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="sndacspylib-module.html">Home</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Tree link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="module-tree.html">Trees</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Index link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="identifier-index.html">Indices</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Help link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="help.html">Help</a>&nbsp;&nbsp;&nbsp;</th>
+
+      <th class="navbar" width="100%"></th>
+  </tr>
+</table>
+<table width="100%" cellpadding="0" cellspacing="0">
+  <tr valign="top">
+    <td width="100%">
+      <span class="breadcrumbs">
+        <a href="sndacspylib-module.html">Package&nbsp;sndacspylib</a> ::
+        Module&nbsp;snda_cs_config
+      </span>
+    </td>
+    <td>
+      <table cellpadding="0" cellspacing="0">
+        <!-- hide/show private -->
+        <tr><td align="right"><span class="options">[<a href="javascript:void(0);" class="privatelink"
+    onclick="toggle_private();">hide&nbsp;private</a>]</span></td></tr>
+        <tr><td align="right"><span class="options"
+            >[<a href="frames.html" target="_top">frames</a
+            >]&nbsp;|&nbsp;<a href="sndacspylib.snda_cs_config-pysrc.html"
+            target="_top">no&nbsp;frames</a>]</span></td></tr>
+      </table>
+    </td>
+  </tr>
+</table>
+<h1 class="epydoc">Source Code for <a href="sndacspylib.snda_cs_config-module.html">Module sndacspylib.snda_cs_config</a></h1>
+<pre class="py-src">
+<a name="L1"></a><tt class="py-lineno">  1</tt>  <tt class="py-line"><tt class="py-docstring">'''</tt> </tt>
+<a name="L2"></a><tt class="py-lineno">  2</tt>  <tt class="py-line"><tt class="py-docstring">Created on 2011-7-27</tt> </tt>
+<a name="L3"></a><tt class="py-lineno">  3</tt>  <tt class="py-line"><tt class="py-docstring"></tt> </tt>
+<a name="L4"></a><tt class="py-lineno">  4</tt>  <tt class="py-line"><tt class="py-docstring">@author: jiangwenhan</tt> </tt>
+<a name="L5"></a><tt class="py-lineno">  5</tt>  <tt class="py-line"><tt class="py-docstring">'''</tt> </tt>
+<a name="L6"></a><tt class="py-lineno">  6</tt>  <tt class="py-line"><tt class="py-keyword">from</tt> <tt class="py-name">logging</tt> <tt class="py-keyword">import</tt> <tt class="py-name">NOTSET</tt><tt class="py-op">,</tt> <tt class="py-name">DEBUG</tt><tt class="py-op">,</tt> <tt class="py-name">INFO</tt><tt class="py-op">,</tt> <tt class="py-name">WARNING</tt><tt class="py-op">,</tt> <tt class="py-name">ERROR</tt><tt class="py-op">,</tt> <tt class="py-name">CRITICAL</tt> </tt>
+<a name="L7"></a><tt class="py-lineno">  7</tt>  <tt class="py-line"><tt class="py-keyword">from</tt> <tt class="py-name">optparse</tt> <tt class="py-keyword">import</tt> <tt class="py-name">OptionParser</tt> </tt>
+<a name="L8"></a><tt class="py-lineno">  8</tt>  <tt class="py-line"><tt class="py-keyword">import</tt> <tt class="py-name">logging</tt> </tt>
+<a name="L9"></a><tt class="py-lineno">  9</tt>  <tt class="py-line"><tt class="py-keyword">import</tt> <tt class="py-name">logging</tt><tt class="py-op">.</tt><tt class="py-name">config</tt> </tt>
+<a name="L10"></a><tt class="py-lineno"> 10</tt>  <tt class="py-line"><tt class="py-keyword">import</tt> <tt id="link-0" class="py-name" targets="Package sndacspylib=sndacspylib-module.html"><a title="sndacspylib" class="py-name" href="#" onclick="return doclink('link-0', 'sndacspylib', 'link-0');">sndacspylib</a></tt><tt class="py-op">.</tt><tt id="link-1" class="py-name" targets="Module sndacspylib.snda_cs_genutilities=sndacspylib.snda_cs_genutilities-module.html"><a title="sndacspylib.snda_cs_genutilities" class="py-name" href="#" onclick="return doclink('link-1', 'snda_cs_genutilities', 'link-1');">snda_cs_genutilities</a></tt> <tt class="py-keyword">as</tt> <tt class="py-name">Util</tt> </tt>
+<a name="L11"></a><tt class="py-lineno"> 11</tt>  <tt class="py-line"><tt class="py-keyword">import</tt> <tt class="py-name">sys</tt> </tt>
+<a name="L12"></a><tt class="py-lineno"> 12</tt>  <tt class="py-line"> </tt>
+<a name="L13"></a><tt class="py-lineno"> 13</tt>  <tt class="py-line"> </tt>
+<a name="L14"></a><tt class="py-lineno"> 14</tt>  <tt class="py-line"> </tt>
+<a name="L15"></a><tt class="py-lineno"> 15</tt>  <tt class="py-line"><tt id="link-2" class="py-name" targets="Variable sndacspylib.snda_cs_config.ASCII_LINEFEED=sndacspylib.snda_cs_config-module.html#ASCII_LINEFEED"><a title="sndacspylib.snda_cs_config.ASCII_LINEFEED" class="py-name" href="#" onclick="return doclink('link-2', 'ASCII_LINEFEED', 'link-2');">ASCII_LINEFEED</a></tt> <tt class="py-op">=</tt> <tt class="py-string">u'\n'</tt> </tt>
+<a name="L16"></a><tt class="py-lineno"> 16</tt>  <tt class="py-line"><tt id="link-3" class="py-name" targets="Variable sndacspylib.snda_cs_config.EQUAL=sndacspylib.snda_cs_config-module.html#EQUAL"><a title="sndacspylib.snda_cs_config.EQUAL" class="py-name" href="#" onclick="return doclink('link-3', 'EQUAL', 'link-3');">EQUAL</a></tt> <tt class="py-op">=</tt> <tt class="py-string">u'='</tt> </tt>
+<a name="L17"></a><tt class="py-lineno"> 17</tt>  <tt class="py-line"> </tt>
+<a name="L18"></a><tt class="py-lineno"> 18</tt>  <tt class="py-line"><tt id="link-4" class="py-name" targets="Variable sndacspylib.snda_cs_config.LOGCONFIG_FILENAME=sndacspylib.snda_cs_config-module.html#LOGCONFIG_FILENAME"><a title="sndacspylib.snda_cs_config.LOGCONFIG_FILENAME" class="py-name" href="#" onclick="return doclink('link-4', 'LOGCONFIG_FILENAME', 'link-4');">LOGCONFIG_FILENAME</a></tt> <tt class="py-op">=</tt> <tt class="py-string">'sndacspylib/config/cs_logconfig.ini'</tt> </tt>
+<a name="L19"></a><tt class="py-lineno"> 19</tt>  <tt class="py-line"><tt id="link-5" class="py-name" targets="Variable sndacspylib.snda_cs_config.CSCONFIG_FILENAME=sndacspylib.snda_cs_config-module.html#CSCONFIG_FILENAME"><a title="sndacspylib.snda_cs_config.CSCONFIG_FILENAME" class="py-name" href="#" onclick="return doclink('link-5', 'CSCONFIG_FILENAME', 'link-5');">CSCONFIG_FILENAME</a></tt>  <tt class="py-op">=</tt> <tt class="py-string">'sndacspylib/config/cs.properties'</tt> </tt>
+<a name="L20"></a><tt class="py-lineno"> 20</tt>  <tt class="py-line"> </tt>
+<a name="CSConfig"></a><div id="CSConfig-def"><a name="L21"></a><tt class="py-lineno"> 21</tt> <a class="py-toggle" href="#" id="CSConfig-toggle" onclick="return toggle('CSConfig');">-</a><tt class="py-line"><tt class="py-keyword">class</tt> <a class="py-def-name" href="sndacspylib.snda_cs_config.CSConfig-class.html">CSConfig</a><tt class="py-op">(</tt><tt class="py-base-class">object</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
+</div><div id="CSConfig-collapsed" style="display:none;" pad="+++" indent="++++"></div><div id="CSConfig-expanded"><a name="L22"></a><tt class="py-lineno"> 22</tt>  <tt class="py-line">     </tt>
+<a name="CSConfig.__init__"></a><div id="CSConfig.__init__-def"><a name="L23"></a><tt class="py-lineno"> 23</tt> <a class="py-toggle" href="#" id="CSConfig.__init__-toggle" onclick="return toggle('CSConfig.__init__');">-</a><tt class="py-line">    <tt class="py-keyword">def</tt> <a class="py-def-name" href="sndacspylib.snda_cs_config.CSConfig-class.html#__init__">__init__</a><tt class="py-op">(</tt><tt class="py-param">self</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
+</div><div id="CSConfig.__init__-collapsed" style="display:none;" pad="+++" indent="++++++++"></div><div id="CSConfig.__init__-expanded"><a name="L24"></a><tt class="py-lineno"> 24</tt>  <tt class="py-line">        <tt class="py-name">self</tt><tt class="py-op">.</tt><tt class="py-name">CSProperties</tt> <tt class="py-op">=</tt> <tt class="py-op">{</tt><tt class="py-op">}</tt> </tt>
+<a name="L25"></a><tt class="py-lineno"> 25</tt>  <tt class="py-line">        <tt class="py-name">self</tt><tt class="py-op">.</tt><tt id="link-6" class="py-name" targets="Method sndacspylib.snda_cs_config.CSConfig.get_configs()=sndacspylib.snda_cs_config.CSConfig-class.html#get_configs"><a title="sndacspylib.snda_cs_config.CSConfig.get_configs" class="py-name" href="#" onclick="return doclink('link-6', 'get_configs', 'link-6');">get_configs</a></tt><tt class="py-op">(</tt><tt class="py-op">)</tt> </tt>
+</div><a name="L26"></a><tt class="py-lineno"> 26</tt>  <tt class="py-line">         </tt>
+<a name="CSConfig.process_line"></a><div id="CSConfig.process_line-def"><a name="L27"></a><tt class="py-lineno"> 27</tt> <a class="py-toggle" href="#" id="CSConfig.process_line-toggle" onclick="return toggle('CSConfig.process_line');">-</a><tt class="py-line">    <tt class="py-keyword">def</tt> <a class="py-def-name" href="sndacspylib.snda_cs_config.CSConfig-class.html#process_line">process_line</a><tt class="py-op">(</tt><tt class="py-param">self</tt><tt class="py-op">,</tt> <tt class="py-param">line</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
+</div><div id="CSConfig.process_line-collapsed" style="display:none;" pad="+++" indent="++++++++"></div><div id="CSConfig.process_line-expanded"><a name="L28"></a><tt class="py-lineno"> 28</tt>  <tt class="py-line">        <tt class="py-docstring">"""</tt> </tt>
+<a name="L29"></a><tt class="py-lineno"> 29</tt>  <tt class="py-line"><tt class="py-docstring">        This function processes a line from a configuration file</tt> </tt>
+<a name="L30"></a><tt class="py-lineno"> 30</tt>  <tt class="py-line"><tt class="py-docstring">        Lines that are not blank and do not start with a "#" are parsed</tt> </tt>
+<a name="L31"></a><tt class="py-lineno"> 31</tt>  <tt class="py-line"><tt class="py-docstring">        for a name:value pair</tt> </tt>
+<a name="L32"></a><tt class="py-lineno"> 32</tt>  <tt class="py-line"><tt class="py-docstring">        """</tt> </tt>
+<a name="L33"></a><tt class="py-lineno"> 33</tt>  <tt class="py-line">        <tt class="py-name">lines</tt> <tt class="py-op">=</tt> <tt class="py-op">[</tt><tt class="py-op">]</tt> </tt>
+<a name="L34"></a><tt class="py-lineno"> 34</tt>  <tt class="py-line">         </tt>
+<a name="L35"></a><tt class="py-lineno"> 35</tt>  <tt class="py-line">        <tt class="py-name">result</tt> <tt class="py-op">=</tt> <tt class="py-name">line</tt><tt class="py-op">.</tt><tt class="py-name">rstrip</tt><tt class="py-op">(</tt><tt class="py-op">)</tt><tt class="py-op">.</tt><tt class="py-name">rstrip</tt><tt class="py-op">(</tt><tt id="link-7" class="py-name"><a title="sndacspylib.snda_cs_config.ASCII_LINEFEED" class="py-name" href="#" onclick="return doclink('link-7', 'ASCII_LINEFEED', 'link-2');">ASCII_LINEFEED</a></tt><tt class="py-op">)</tt> </tt>
+<a name="L36"></a><tt class="py-lineno"> 36</tt>  <tt class="py-line">         </tt>
+<a name="L37"></a><tt class="py-lineno"> 37</tt>  <tt class="py-line">        <tt class="py-keyword">if</tt> <tt class="py-name">result</tt> <tt class="py-op">==</tt> <tt class="py-string">''</tt> <tt class="py-keyword">or</tt> <tt class="py-name">result</tt><tt class="py-op">[</tt><tt class="py-op">:</tt><tt class="py-number">1</tt><tt class="py-op">]</tt> <tt class="py-op">==</tt> <tt class="py-string">'#'</tt><tt class="py-op">:</tt> </tt>
+<a name="L38"></a><tt class="py-lineno"> 38</tt>  <tt class="py-line">            <tt class="py-keyword">pass</tt> </tt>
+<a name="L39"></a><tt class="py-lineno"> 39</tt>  <tt class="py-line">        <tt class="py-keyword">else</tt><tt class="py-op">:</tt> </tt>
+<a name="L40"></a><tt class="py-lineno"> 40</tt>  <tt class="py-line">            <tt class="py-name">lines</tt><tt class="py-op">.</tt><tt class="py-name">append</tt><tt class="py-op">(</tt><tt class="py-name">result</tt><tt class="py-op">)</tt> </tt>
+<a name="L41"></a><tt class="py-lineno"> 41</tt>  <tt class="py-line">            <tt class="py-comment">#kvpair = result.split(EQUAL)</tt> </tt>
+<a name="L42"></a><tt class="py-lineno"> 42</tt>  <tt class="py-line">            <tt class="py-comment">#self.CSProperties[kvpair[0]] = kvpair[1]</tt> </tt>
+<a name="L43"></a><tt class="py-lineno"> 43</tt>  <tt class="py-line">            <tt class="py-name">split_pos</tt> <tt class="py-op">=</tt> <tt class="py-name">result</tt><tt class="py-op">.</tt><tt class="py-name">find</tt><tt class="py-op">(</tt><tt id="link-8" class="py-name"><a title="sndacspylib.snda_cs_config.EQUAL" class="py-name" href="#" onclick="return doclink('link-8', 'EQUAL', 'link-3');">EQUAL</a></tt><tt class="py-op">)</tt> </tt>
+<a name="L44"></a><tt class="py-lineno"> 44</tt>  <tt class="py-line">            <tt class="py-name">self</tt><tt class="py-op">.</tt><tt class="py-name">CSProperties</tt><tt class="py-op">[</tt><tt class="py-name">result</tt><tt class="py-op">[</tt><tt class="py-op">:</tt><tt class="py-name">split_pos</tt><tt class="py-op">]</tt><tt class="py-op">]</tt> <tt class="py-op">=</tt> <tt class="py-name">result</tt><tt class="py-op">[</tt><tt class="py-name">split_pos</tt><tt class="py-op">+</tt><tt class="py-number">1</tt><tt class="py-op">:</tt><tt class="py-op">]</tt> </tt>
+<a name="L45"></a><tt class="py-lineno"> 45</tt>  <tt class="py-line">        <tt class="py-keyword">return</tt> </tt>
+</div><a name="L46"></a><tt class="py-lineno"> 46</tt>  <tt class="py-line">                 </tt>
+<a name="CSConfig.get_configs"></a><div id="CSConfig.get_configs-def"><a name="L47"></a><tt class="py-lineno"> 47</tt> <a class="py-toggle" href="#" id="CSConfig.get_configs-toggle" onclick="return toggle('CSConfig.get_configs');">-</a><tt class="py-line">    <tt class="py-keyword">def</tt> <a class="py-def-name" href="sndacspylib.snda_cs_config.CSConfig-class.html#get_configs">get_configs</a><tt class="py-op">(</tt><tt class="py-param">self</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
+</div><div id="CSConfig.get_configs-collapsed" style="display:none;" pad="+++" indent="++++++++"></div><div id="CSConfig.get_configs-expanded"><a name="L48"></a><tt class="py-lineno"> 48</tt>  <tt class="py-line">        <tt class="py-docstring">"""</tt> </tt>
+<a name="L49"></a><tt class="py-lineno"> 49</tt>  <tt class="py-line"><tt class="py-docstring">        This function set's up a parser, processes command line arguments</tt> </tt>
+<a name="L50"></a><tt class="py-lineno"> 50</tt>  <tt class="py-line"><tt class="py-docstring">        and reads the configuration from the configuration file specified </tt> </tt>
+<a name="L51"></a><tt class="py-lineno"> 51</tt>  <tt class="py-line"><tt class="py-docstring">        as a cmd line argument</tt> </tt>
+<a name="L52"></a><tt class="py-lineno"> 52</tt>  <tt class="py-line"><tt class="py-docstring">        """</tt> </tt>
+<a name="L53"></a><tt class="py-lineno"> 53</tt>  <tt class="py-line">         </tt>
+<a name="L54"></a><tt class="py-lineno"> 54</tt>  <tt class="py-line">        <tt class="py-name">log_level</tt> <tt class="py-op">=</tt> <tt class="py-op">[</tt><tt class="py-name">NOTSET</tt><tt class="py-op">,</tt> <tt class="py-name">DEBUG</tt><tt class="py-op">,</tt> <tt class="py-name">INFO</tt><tt class="py-op">,</tt> \ </tt>
+<a name="L55"></a><tt class="py-lineno"> 55</tt>  <tt class="py-line">                     <tt class="py-name">WARNING</tt><tt class="py-op">,</tt> <tt class="py-name">ERROR</tt><tt class="py-op">,</tt> <tt class="py-name">CRITICAL</tt><tt class="py-op">]</tt> </tt>
+<a name="L56"></a><tt class="py-lineno"> 56</tt>  <tt class="py-line">         </tt>
+<a name="L57"></a><tt class="py-lineno"> 57</tt>  <tt class="py-line">        <tt class="py-name">parser</tt> <tt class="py-op">=</tt> <tt class="py-name">OptionParser</tt><tt class="py-op">(</tt><tt class="py-name">version</tt><tt class="py-op">=</tt><tt class="py-string">"%prog 0.1"</tt><tt class="py-op">,</tt> <tt class="py-name">usage</tt><tt class="py-op">=</tt><tt class="py-string">"""</tt> </tt>
+<a name="L58"></a><tt class="py-lineno"> 58</tt>  <tt class="py-line"><tt class="py-string">        This function set's up a parser, processes command line arguments</tt> </tt>
+<a name="L59"></a><tt class="py-lineno"> 59</tt>  <tt class="py-line"><tt class="py-string">        and reads the configuration from the configuration file specified </tt> </tt>
+<a name="L60"></a><tt class="py-lineno"> 60</tt>  <tt class="py-line"><tt class="py-string">        as a cmd line argument</tt> </tt>
+<a name="L61"></a><tt class="py-lineno"> 61</tt>  <tt class="py-line"><tt class="py-string">        """</tt><tt class="py-op">)</tt> </tt>
+<a name="L62"></a><tt class="py-lineno"> 62</tt>  <tt class="py-line">         </tt>
+<a name="L63"></a><tt class="py-lineno"> 63</tt>  <tt class="py-line">        <tt class="py-name">parser</tt><tt class="py-op">.</tt><tt class="py-name">add_option</tt><tt class="py-op">(</tt><tt class="py-string">'-i'</tt><tt class="py-op">,</tt> <tt class="py-string">'--input'</tt><tt class="py-op">,</tt> <tt class="py-name">action</tt><tt class="py-op">=</tt><tt class="py-string">'store'</tt><tt class="py-op">,</tt> <tt class="py-name">type</tt><tt class="py-op">=</tt><tt class="py-string">'string'</tt><tt class="py-op">,</tt> <tt class="py-name">dest</tt><tt class="py-op">=</tt><tt class="py-string">'inputfile'</tt><tt class="py-op">,</tt> <tt class="py-name">default</tt><tt class="py-op">=</tt><tt class="py-string">''</tt><tt class="py-op">,</tt> \ </tt>
+<a name="L64"></a><tt class="py-lineno"> 64</tt>  <tt class="py-line">                          <tt class="py-name">help</tt><tt class="py-op">=</tt><tt class="py-string">'input file. Default is cs.properties in PYTHONPATH'</tt><tt class="py-op">)</tt> </tt>
+<a name="L65"></a><tt class="py-lineno"> 65</tt>  <tt class="py-line">        <tt class="py-name">parser</tt><tt class="py-op">.</tt><tt class="py-name">add_option</tt><tt class="py-op">(</tt><tt class="py-string">'-c'</tt><tt class="py-op">,</tt> <tt class="py-string">'--logconfig'</tt><tt class="py-op">,</tt> <tt class="py-name">action</tt><tt class="py-op">=</tt><tt class="py-string">'store'</tt><tt class="py-op">,</tt> <tt class="py-name">type</tt><tt class="py-op">=</tt><tt class="py-string">'string'</tt><tt class="py-op">,</tt> <tt class="py-name">dest</tt><tt class="py-op">=</tt><tt class="py-string">'logconfigfile'</tt><tt class="py-op">,</tt> <tt class="py-name">default</tt><tt class="py-op">=</tt><tt class="py-string">''</tt><tt class="py-op">,</tt> \ </tt>
+<a name="L66"></a><tt class="py-lineno"> 66</tt>  <tt class="py-line">                          <tt class="py-name">help</tt><tt class="py-op">=</tt><tt class="py-string">'log configuration file. Default is cs_logconfig.ini in PYTHONPATH'</tt><tt class="py-op">)</tt> </tt>
+<a name="L67"></a><tt class="py-lineno"> 67</tt>  <tt class="py-line">         </tt>
+<a name="L68"></a><tt class="py-lineno"> 68</tt>  <tt class="py-line">        <tt class="py-op">(</tt><tt class="py-name">ConfigOptions</tt><tt class="py-op">,</tt> <tt class="py-name">args</tt><tt class="py-op">)</tt> <tt class="py-op">=</tt> <tt class="py-name">parser</tt><tt class="py-op">.</tt><tt class="py-name">parse_args</tt><tt class="py-op">(</tt><tt class="py-op">)</tt> </tt>
+<a name="L69"></a><tt class="py-lineno"> 69</tt>  <tt class="py-line">         </tt>
+<a name="L70"></a><tt class="py-lineno"> 70</tt>  <tt class="py-line">        <tt class="py-comment">#input configuration file</tt> </tt>
+<a name="L71"></a><tt class="py-lineno"> 71</tt>  <tt class="py-line">        <tt class="py-name">input</tt> <tt class="py-op">=</tt> <tt class="py-name">None</tt> </tt>
+<a name="L72"></a><tt class="py-lineno"> 72</tt>  <tt class="py-line">        <tt class="py-keyword">if</tt> <tt class="py-name">ConfigOptions</tt><tt class="py-op">.</tt><tt class="py-name">inputfile</tt><tt class="py-op">:</tt> </tt>
+<a name="L73"></a><tt class="py-lineno"> 73</tt>  <tt class="py-line">            <tt class="py-name">input</tt> <tt class="py-op">=</tt> <tt class="py-name">open</tt><tt class="py-op">(</tt><tt class="py-name">ConfigOptions</tt><tt class="py-op">.</tt><tt class="py-name">inputfile</tt><tt class="py-op">,</tt> <tt class="py-string">'r'</tt><tt class="py-op">)</tt> </tt>
+<a name="L74"></a><tt class="py-lineno"> 74</tt>  <tt class="py-line">        <tt class="py-keyword">else</tt><tt class="py-op">:</tt> </tt>
+<a name="L75"></a><tt class="py-lineno"> 75</tt>  <tt class="py-line">            <tt class="py-name">input_file_name</tt> <tt class="py-op">=</tt> <tt class="py-name">Util</tt><tt class="py-op">.</tt><tt id="link-9" class="py-name" targets="Function sndacspylib.snda_cs_genutilities.find_file()=sndacspylib.snda_cs_genutilities-module.html#find_file"><a title="sndacspylib.snda_cs_genutilities.find_file" class="py-name" href="#" onclick="return doclink('link-9', 'find_file', 'link-9');">find_file</a></tt><tt class="py-op">(</tt><tt id="link-10" class="py-name"><a title="sndacspylib.snda_cs_config.CSCONFIG_FILENAME" class="py-name" href="#" onclick="return doclink('link-10', 'CSCONFIG_FILENAME', 'link-5');">CSCONFIG_FILENAME</a></tt><tt class="py-op">)</tt> </tt>
+<a name="L76"></a><tt class="py-lineno"> 76</tt>  <tt class="py-line">            <tt class="py-keyword">if</tt> <tt class="py-name">input_file_name</tt> <tt class="py-op">==</tt> <tt class="py-name">None</tt><tt class="py-op">:</tt> </tt>
+<a name="L77"></a><tt class="py-lineno"> 77</tt>  <tt class="py-line">                <tt class="py-keyword">print</tt> <tt class="py-string">'Could not find input configuration file %s in PYTHONPATH'</tt> <tt class="py-op">%</tt> <tt id="link-11" class="py-name"><a title="sndacspylib.snda_cs_config.CSCONFIG_FILENAME" class="py-name" href="#" onclick="return doclink('link-11', 'CSCONFIG_FILENAME', 'link-5');">CSCONFIG_FILENAME</a></tt> </tt>
+<a name="L78"></a><tt class="py-lineno"> 78</tt>  <tt class="py-line">                <tt class="py-name">sys</tt><tt class="py-op">.</tt><tt class="py-name">exit</tt><tt class="py-op">(</tt><tt class="py-number">0</tt><tt class="py-op">)</tt> </tt>
+<a name="L79"></a><tt class="py-lineno"> 79</tt>  <tt class="py-line">            <tt class="py-keyword">else</tt><tt class="py-op">:</tt> </tt>
+<a name="L80"></a><tt class="py-lineno"> 80</tt>  <tt class="py-line">                <tt class="py-name">input</tt> <tt class="py-op">=</tt> <tt class="py-name">open</tt><tt class="py-op">(</tt><tt class="py-name">input_file_name</tt><tt class="py-op">,</tt> <tt class="py-string">'r'</tt><tt class="py-op">)</tt> </tt>
+<a name="L81"></a><tt class="py-lineno"> 81</tt>  <tt class="py-line">                 </tt>
+<a name="L82"></a><tt class="py-lineno"> 82</tt>  <tt class="py-line">        <tt class="py-comment">#input log configuration file</tt> </tt>
+<a name="L83"></a><tt class="py-lineno"> 83</tt>  <tt class="py-line">        <tt class="py-name">log_config_file</tt> <tt class="py-op">=</tt> <tt class="py-name">Util</tt><tt class="py-op">.</tt><tt id="link-12" class="py-name"><a title="sndacspylib.snda_cs_genutilities.find_file" class="py-name" href="#" onclick="return doclink('link-12', 'find_file', 'link-9');">find_file</a></tt><tt class="py-op">(</tt><tt id="link-13" class="py-name"><a title="sndacspylib.snda_cs_config.LOGCONFIG_FILENAME" class="py-name" href="#" onclick="return doclink('link-13', 'LOGCONFIG_FILENAME', 'link-4');">LOGCONFIG_FILENAME</a></tt><tt class="py-op">)</tt> </tt>
+<a name="L84"></a><tt class="py-lineno"> 84</tt>  <tt class="py-line">        <tt class="py-keyword">if</tt> <tt class="py-name">log_config_file</tt> <tt class="py-op">==</tt> <tt class="py-name">None</tt><tt class="py-op">:</tt> </tt>
+<a name="L85"></a><tt class="py-lineno"> 85</tt>  <tt class="py-line">            <tt class="py-keyword">print</tt> <tt class="py-string">'Could not find log configuration file %s in PYTHONPATH'</tt> <tt class="py-op">%</tt> <tt id="link-14" class="py-name"><a title="sndacspylib.snda_cs_config.LOGCONFIG_FILENAME" class="py-name" href="#" onclick="return doclink('link-14', 'LOGCONFIG_FILENAME', 'link-4');">LOGCONFIG_FILENAME</a></tt> </tt>
+<a name="L86"></a><tt class="py-lineno"> 86</tt>  <tt class="py-line">            <tt class="py-name">sys</tt><tt class="py-op">.</tt><tt class="py-name">exit</tt><tt class="py-op">(</tt><tt class="py-number">0</tt><tt class="py-op">)</tt> </tt>
+<a name="L87"></a><tt class="py-lineno"> 87</tt>  <tt class="py-line">        <tt class="py-keyword">else</tt><tt class="py-op">:</tt> </tt>
+<a name="L88"></a><tt class="py-lineno"> 88</tt>  <tt class="py-line">            <tt class="py-name">logging</tt><tt class="py-op">.</tt><tt class="py-name">config</tt><tt class="py-op">.</tt><tt class="py-name">fileConfig</tt><tt class="py-op">(</tt><tt class="py-name">log_config_file</tt><tt class="py-op">)</tt> </tt>
+<a name="L89"></a><tt class="py-lineno"> 89</tt>  <tt class="py-line"> </tt>
+<a name="L90"></a><tt class="py-lineno"> 90</tt>  <tt class="py-line">        <tt class="py-comment">#log command input</tt> </tt>
+<a name="L91"></a><tt class="py-lineno"> 91</tt>  <tt class="py-line">        <tt class="py-name">logging</tt><tt class="py-op">.</tt><tt class="py-name">debug</tt><tt class="py-op">(</tt><tt class="py-string">'options:%s'</tt> <tt class="py-op">%</tt> <tt class="py-name">ConfigOptions</tt><tt class="py-op">)</tt> </tt>
+<a name="L92"></a><tt class="py-lineno"> 92</tt>  <tt class="py-line">        <tt class="py-name">logging</tt><tt class="py-op">.</tt><tt class="py-name">debug</tt><tt class="py-op">(</tt><tt class="py-string">'args:%s'</tt> <tt class="py-op">%</tt> <tt class="py-name">args</tt><tt class="py-op">)</tt> </tt>
+<a name="L93"></a><tt class="py-lineno"> 93</tt>  <tt class="py-line"> </tt>
+<a name="L94"></a><tt class="py-lineno"> 94</tt>  <tt class="py-line">        <tt class="py-comment">#process configuration file</tt> </tt>
+<a name="L95"></a><tt class="py-lineno"> 95</tt>  <tt class="py-line">        <tt class="py-name">nLine</tt> <tt class="py-op">=</tt> <tt class="py-number">0</tt> </tt>
+<a name="L96"></a><tt class="py-lineno"> 96</tt>  <tt class="py-line">        <tt class="py-keyword">for</tt> <tt class="py-name">line</tt> <tt class="py-keyword">in</tt> <tt class="py-name">input</tt><tt class="py-op">:</tt> </tt>
+<a name="L97"></a><tt class="py-lineno"> 97</tt>  <tt class="py-line">            <tt class="py-name">self</tt><tt class="py-op">.</tt><tt id="link-15" class="py-name" targets="Method sndacspylib.snda_cs_config.CSConfig.process_line()=sndacspylib.snda_cs_config.CSConfig-class.html#process_line"><a title="sndacspylib.snda_cs_config.CSConfig.process_line" class="py-name" href="#" onclick="return doclink('link-15', 'process_line', 'link-15');">process_line</a></tt><tt class="py-op">(</tt><tt class="py-name">line</tt><tt class="py-op">)</tt> </tt>
+<a name="L98"></a><tt class="py-lineno"> 98</tt>  <tt class="py-line">            <tt class="py-name">nLine</tt> <tt class="py-op">+=</tt> <tt class="py-number">1</tt> </tt>
+<a name="L99"></a><tt class="py-lineno"> 99</tt>  <tt class="py-line">         </tt>
+<a name="L100"></a><tt class="py-lineno">100</tt>  <tt class="py-line">        <tt class="py-comment">#log properties in configuration file</tt> </tt>
+<a name="L101"></a><tt class="py-lineno">101</tt>  <tt class="py-line">        <tt class="py-name">logging</tt><tt class="py-op">.</tt><tt class="py-name">debug</tt><tt class="py-op">(</tt><tt class="py-string">'CSProperties: %s'</tt> <tt class="py-op">%</tt> <tt class="py-name">self</tt><tt class="py-op">.</tt><tt class="py-name">CSProperties</tt><tt class="py-op">)</tt> </tt>
+<a name="L102"></a><tt class="py-lineno">102</tt>  <tt class="py-line">         </tt>
+<a name="L103"></a><tt class="py-lineno">103</tt>  <tt class="py-line">        <tt class="py-name">input</tt><tt class="py-op">.</tt><tt class="py-name">close</tt><tt class="py-op">(</tt><tt class="py-op">)</tt> </tt>
+<a name="L104"></a><tt class="py-lineno">104</tt>  <tt class="py-line">        <tt class="py-keyword">return</tt> </tt>
+</div></div><a name="L105"></a><tt class="py-lineno">105</tt>  <tt class="py-line">         </tt>
+<a name="L106"></a><tt class="py-lineno">106</tt>  <tt class="py-line"><tt id="link-16" class="py-name" targets="Variable sndacspylib.snda_cs_config.Config=sndacspylib.snda_cs_config-module.html#Config"><a title="sndacspylib.snda_cs_config.Config" class="py-name" href="#" onclick="return doclink('link-16', 'Config', 'link-16');">Config</a></tt> <tt class="py-op">=</tt> <tt id="link-17" class="py-name" targets="Class sndacspylib.snda_cs_config.CSConfig=sndacspylib.snda_cs_config.CSConfig-class.html"><a title="sndacspylib.snda_cs_config.CSConfig" class="py-name" href="#" onclick="return doclink('link-17', 'CSConfig', 'link-17');">CSConfig</a></tt><tt class="py-op">(</tt><tt class="py-op">)</tt> </tt>
+<a name="L107"></a><tt class="py-lineno">107</tt>  <tt class="py-line"> </tt><script type="text/javascript">
+<!--
+expandto(location.href);
+// -->
+</script>
+</pre>
+<br />
+<!-- ==================== NAVIGATION BAR ==================== -->
+<table class="navbar" border="0" width="100%" cellpadding="0"
+       bgcolor="#a0c0ff" cellspacing="0">
+  <tr valign="middle">
+  <!-- Home link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="sndacspylib-module.html">Home</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Tree link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="module-tree.html">Trees</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Index link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="identifier-index.html">Indices</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Help link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="help.html">Help</a>&nbsp;&nbsp;&nbsp;</th>
+
+      <th class="navbar" width="100%"></th>
+  </tr>
+</table>
+<table border="0" cellpadding="0" cellspacing="0" width="100%%">
+  <tr>
+    <td align="left" class="footer">
+    Generated by Epydoc 3.0.1 on Tue Jun 12 15:03:59 2012
+    </td>
+    <td align="right" class="footer">
+      <a target="mainFrame" href="http://epydoc.sourceforge.net"
+        >http://epydoc.sourceforge.net</a>
+    </td>
+  </tr>
+</table>
+
+<script type="text/javascript">
+  <!--
+  // Private objects are initially displayed (because if
+  // javascript is turned off then we want them to be
+  // visible); but by default, we want to hide them.  So hide
+  // them unless we have a cookie that says to show them.
+  checkCookie();
+  // -->
+</script>
+</body>
+</html>
