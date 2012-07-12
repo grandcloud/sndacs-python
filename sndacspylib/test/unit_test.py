@@ -1,6 +1,5 @@
 '''
 Created on Jul 12, 2012
-
 '''
 
 from sndacspylib.snda_cs_config import *
