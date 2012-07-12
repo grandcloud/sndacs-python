@@ -1,7 +1,5 @@
 '''
 Created on 2011-8-1
-
-@author: jiangwenhan
 '''
 
 try:
@@ -14,7 +12,7 @@ except ImportError:
 
 
 
-__version__ = '0.1'
+__version__ = '0.1.1'
 
 
 
@@ -26,7 +24,7 @@ setup(name = "sndacspylib",
 
       long_description="Python Library to SNDA Cloud Storage Web Services",
 
-      author_email = "jiangwenhan@snda.com",
+      author_email = "grandcloud_support@snda.com",
 
       packages = [ 'sndacspylib', 'sndacspylib.snda_cs', 'sndacspylib.test'],
 
