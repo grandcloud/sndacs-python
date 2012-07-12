@@ -20,6 +20,7 @@ import sndacspylib.snda_cs_genutilities as Util
 import string
 import time
 import xml.sax
+import json
 
 
 _NUMBER_OF_RETRIES_ = 3
@@ -317,6 +318,12 @@ class SNDA_CS:
                     self.name = name
                     self.creation_date = creation_date
                     self.location = location
+                def __to_dict__(self):
+                    return {'name': self.name,
+                            'creation_date': str(self.creation_date),
+                            'location': self.location}
+                def __str__(self):
+                    return json.dumps(self.__to_dict__())
                     
     def get_bucket_name(self, bucketName):
         """
@@ -1458,7 +1465,7 @@ class SNDA_Object:
         while numTries < _NUMBER_OF_RETRIES_:
             try:
                 object_info = self.get_object_info()
-                if object_info._get_content_length_() > 0:
+                if object_info.size > 0:
                     response = self._stream_data_to_stream_()
                     
                     if (response.status is httplib.OK) \
@@ -1486,8 +1493,8 @@ class SNDA_Object:
         while numTries < _NUMBER_OF_RETRIES_:
             try:
                 object_info = self.get_object_info()
-                if object_info._get_content_length_() > 0:
-                    resp, h = self._stream_data_to_file_(fileName, object_info._get_content_length_())
+                if object_info.size > 0:
+                    resp, h = self._stream_data_to_file_(fileName, object_info.size)
                     
                     if (resp._get_status_() is httplib.OK) \
                         or (resp._get_status_() is httplib.PARTIAL_CONTENT):
@@ -1533,82 +1540,6 @@ class SNDA_Object:
             raise f
         
         return resp
-    
-    def sync_upload_from_file(self, fileName):
-        """
-        Uploads file specified by fileName if it is different than what exists on ECS
-        Returns True if the file was actually uploaded.
-        
-        @type fileName: string
-        @param fileName: file name
-        """
-        fUpload = True
-        try:
-            object_info  = self.get_object_info( )
-            file_info = os.stat( fileName)
-
-            if ( file_info.st_size == int ( object_info._get_metadata_value_( CS.METADATA_PREFIX + 'content-length' ) ) ):
-                # The file sizes are the same, next check the last modified times
-                last_modified = time.strftime( Util.CS_TIME_FORMAT, time.gmtime( file_info.st_mtime ) )
-                if (time.strftime( Util.CS_TIME_FORMAT, time.gmtime( file_info.st_mtime ) ) == \
-                    object_info._get_metadata_value_ ( CS.METADATA_PREFIX + _MD_LAST_MODIFIED_TIME_ ) ):
-                    # The last modified times are also identical, let's check the hash as a last resort
-                    hash = Util.get_hash_from_filename( fileName )        
-                    if (hash == object_info._get_etag_( ) ):
-                        fUpload = False
-
-            if (fUpload):
-                self.put_object_from_file ( fileName )
-
-        except Exception, f:
-            errLog.debug ('ERROR %s' % f)
-            raise f
-        else:
-            fSuccess = True
-        finally:
-            pass
-
-        return ( fUpload )
-        
-    def sync_download_to_file(self, fileName):
-        """
-        DOWNLOADS to file specified by fileName if it is different than what exists on ECS
-        Returns True if the file was actually downloaded.
-        
-        @type fileName: string
-        @param fileName: file name
-        """
-        fDownload = True
-        try:
-            object_info  = self.get_object_info( )
-            if (os.path.exists ( fileName) == True):
-                file_info = os.stat( fileName)
-
-                if ( file_info.st_size == int ( object_info._get_metadata_value_( CS.METADATA_PREFIX + _MD_SIZE_ ) ) ):
-                    # The file sizes are the same, next check the last modified times
-                    last_modified = time.strftime( Util.CS_TIME_FORMAT, time.gmtime( file_info.st_mtime ) )
-                    if (time.strftime( Util.CS_TIME_FORMAT, time.gmtime( file_info.st_mtime ) ) == \
-                        object_info._get_metadata_value_ ( CS.METADATA_PREFIX + _MD_LAST_MODIFIED_TIME_) ):
-                        # The last modified times are also identical, let's check the hash as a last resort
-                        hash = Util.get_hash_from_filename( fileName )        
-                        if (hash == object_info._get_etag_( ) ):
-                            fDownload = False
-
-            else:
-                fDownload = True
-                
-            if (fDownload):
-                self.get_object_to_file ( fileName )
-
-        except Exception, f:            
-            errLog.error ('ERROR %s' % f)
-            raise f
-        else:
-            fSuccess = True
-        finally:
-            pass
-
-        return ( fDownload )
     
     def initiate_multipart_upload(self):
         """
