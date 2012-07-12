@@ -437,7 +437,11 @@ class SNDAAuthConnection:
         
         return self.path
     
-    def create_signed_put_url(self, bucket='', key='', headers={}, metadata={}, expire=0):
+    def create_signed_put_url(self, bucket='', key='', headers=0, metadata=0, expire=0):
+        if headers == 0:
+            headers = {}
+        if metadata == 0:
+            metadata = {}
         query_args = {}
         return self.create_signed_url('PUT', bucket, key, query_args, headers, metadata, expire)
 

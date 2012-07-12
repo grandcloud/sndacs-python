@@ -1,7 +1,6 @@
 '''
 Created on 2011-7-27
 
-@author: jiangwenhan
 '''
 
 class CSError(Exception):
@@ -42,6 +41,12 @@ class CSInvalidPartOrder(Exception):
         self.upload_id = upload_id
     def __str__(self):
         return ( 'UploadId %s request list of parts was not in ascending order\n' % self.upload_id )
+
+class CSInvalidAccessKeyId(Exception):
+    def __init__(self, access_key_id):
+        self.access_key_id = access_key_id
+    def __str__(self):
+        return ( 'The SNDA Access Key Id you provided does not exist in our records.' )
 
 class InvalidAttribute(Exception):
     

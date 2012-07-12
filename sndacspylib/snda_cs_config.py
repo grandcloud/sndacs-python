@@ -1,7 +1,6 @@
 '''
 Created on 2011-7-27
 
-@author: jiangwenhan
 '''
 from logging import NOTSET, DEBUG, INFO, WARNING, ERROR, CRITICAL
 from optparse import OptionParser

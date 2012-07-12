@@ -1447,7 +1447,7 @@ class SNDA_Object:
             errLog.debug('ERROR %s' % f)
             raise f
         
-        return resp
+        return resp.object
     
     def get_object(self):
         """
@@ -1610,7 +1610,7 @@ class SNDA_Object:
 
         return ( fDownload )
     
-    def _initiate_multipart_upload_(self):
+    def initiate_multipart_upload(self):
         """
         Initiate to upload a file with multiparts
         """
@@ -1630,7 +1630,7 @@ class SNDA_Object:
             errLog.debug ('ERROR %s' % f)
             raise f
         
-    def _upload_part_from_file_(self, upload_id, part_number, fileName):
+    def upload_part_from_file(self, upload_id, part_number, fileName):
         """
         Uploads a part from file in a multipart upload session.
         
@@ -1735,7 +1735,7 @@ class SNDA_Object:
             if fp:
                 fp.close( )
 
-    def _upload_part_from_data_(self, upload_id, part_number, data):
+    def upload_part_from_data(self, upload_id, part_number, data):
         """
         Uploads a part in a multipart upload session.
         
@@ -1764,7 +1764,7 @@ class SNDA_Object:
             raise f
             
         
-    def _abort_multipart_upload_(self, upload_id):
+    def abort_multipart_upload(self, upload_id):
         """
         Aborts a multiupload.
         
@@ -1792,7 +1792,7 @@ class SNDA_Object:
             errLog.debug ('ERROR %s' % f)
             raise f
         
-    def _complete_multipart_upload_(self, upload_id, complete_parts):
+    def complete_multipart_upload(self, upload_id, complete_parts):
         """
         Completes a multipart upload by assembling previously uploaded parts
         
@@ -1819,7 +1819,7 @@ class SNDA_Object:
             errLog.debug ('ERROR %s' % f)
             raise f
         
-    def _list_parts_(self, upload_id, max_parts=None, part_number_marker=None):
+    def list_parts(self, upload_id, max_parts=None, part_number_marker=None):
         """
         Lists parts that have been uploaded for a specific multipart upload.
         

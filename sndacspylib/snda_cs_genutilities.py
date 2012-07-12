@@ -1,7 +1,6 @@
 '''
 Created on 2011-7-27
 
-@author: jiangwenhan
 '''
 
 from hashlib import md5
