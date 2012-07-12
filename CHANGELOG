@@ -4,7 +4,7 @@ head:
 
 - Change return value format of SNDA_Object.get_object_info() method
   
-  - Now the return value provide metadata, size and last_modified properties
+  -- Now the return value provide metadata, size and last_modified properties
 
 0.1.0:
 
