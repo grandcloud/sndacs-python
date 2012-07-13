@@ -1,6 +1,5 @@
 '''
 Created on 2011-7-27
-
 '''
 
 from sndacspylib.snda_cs_exception import *
@@ -383,18 +382,12 @@ class SNDAAuthConnection:
                 commLog.debug('RESP MSG: Status=%d(%s).  ---msg follows---\n%s' % \
                            (response.status, response.reason, response.msg))
                 
-            if response.status >= 400:
-                raise CSError(response.status, response.reason, method, bucket, key)
-            
         except socket.error, (value, message):
             errLog.error('Caught %d:%s. Aborting' % (value, message))
             raise
-        except CSError, e:
-            errLog.error(e.__str__())
-            raise
         except Exception, f:
             errLog.error('ERROR %s' % f)
-            raise
+            raise f
         
         return response
     

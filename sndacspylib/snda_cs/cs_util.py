@@ -1,6 +1,5 @@
 '''
 Created on 2011-7-27
-
 '''
 
 from hashlib import md5
@@ -78,6 +77,14 @@ class _Response_:
         
         if http_response.status < httplib.MULTIPLE_CHOICES:
             self.body = http_response.read()
+        else:
+            handler = self._ErrorHandler_()
+            self.body = http_response.read()
+            if self.body == '':
+                self.error = None
+                return
+            xml.sax.parseString(self.body, handler)
+            self.error = handler.error
             
     def _get_header_(self, header):
         """
@@ -207,6 +214,40 @@ class _Response_:
         @return: http response server header value
         """
         return self._get_header_('Server')
+    
+    class _ErrorHandler_(xml.sax.ContentHandler):
+        """
+        SAX ContentHandler to parse error xml docs.
+        """
+        def __init__(self):
+            self.error = None
+            self.curr_text = ''
+        def startElement(self, name, attrs):
+            if name == 'Error':
+                self.error = self.Error()
+        def endElement(self, name):
+            if name == 'Code':
+                self.error.code = self.curr_text
+            elif name == 'Message':
+                self.error.message = self.curr_text
+            elif name == 'Resource':
+                self.error.resource = self.curr_text
+            elif name == 'RequestId':
+                self.error.request_id = self.curr_text
+
+        def characters(self, content):
+            self.curr_text = content
+                
+        class Error:
+            def __init__(self, code=0, message=0, resource=0, request_id=0):
+                self.code = code
+                self.message = message
+                self.resource = resource
+                self.request_id = request_id
+            def __repr__(self):
+                return "<Error:%s, RequestId:%s>" % (self.code, self.request_id)
+            def __str__(self):
+                return "<Error:%s, RequestId:%s>" % (self.code, self.request_id)
     
 class _GETResponse_(_Response_):
     
@@ -1188,60 +1229,70 @@ class SNDA_Object:
             return resp, local_hash
         
     def _stream_data_from_stream_(self, size, stream, headers, metadata):
-        resp = 0
+        resp = hash = 0
+        
         if headers is None:
             headers = {}
         if metadata is None:
             metadata = {}
         
-        try:
-            if not headers.has_key('Content-Type'):
-                extension = self.objectName.split('.')[-1]
-                headers['Content-Type'] = Types.get_type(extension.lower())
-                
-            headers['Content-Length'] = size
+        if Config.CSProperties['CheckHash'] == 'True':
+            stream_hash = md5()
+        if not headers.has_key('Content-Type'):
+            extension = self.objectName.split('.')[-1]
+            headers['Content-Type'] = Types.get_type(extension.lower())
             
-            if self.CONN.is_secure:
-                connection = httplib.HTTPSConnection('%s:%d' % (self.CONN.server, self.CONN.port))
-            else:
-                connection = httplib.HTTPConnection('%s:%d' % (self.CONN.server, self.CONN.port))
-                
-            self.CONN.prepare_message('PUT', self.bucketName, self.objectName, {}, headers, metadata)
+        headers['Content-Length'] = size
+        
+        if self.CONN.is_secure:
+            connection = httplib.HTTPSConnection('%s:%d' % (self.CONN.server, self.CONN.port))
+        else:
+            connection = httplib.HTTPConnection('%s:%d' % (self.CONN.server, self.CONN.port))
             
-            CS.commLog.debug('RQST MSG:%s --details follow--\n\t%s - %s:%d\n\tHeaders:%s' % \
-                             ('PUT', self.CONN.path, connection.host, connection.port, self.CONN.final_headers))
+        self.CONN.prepare_message('PUT', self.bucketName, self.objectName, {}, headers, metadata)
+        
+        CS.commLog.debug('RQST MSG:%s --details follow--\n\t%s - %s:%d\n\tHeaders:%s' % \
+                         ('PUT', self.CONN.path, connection.host, connection.port, self.CONN.final_headers))
+        
+        connection.putrequest('PUT', self.CONN.path)
+        
+        for key in self.CONN.final_headers.keys():
+            connection.putheader(key, self.CONN.final_headers[key])
             
-            connection.putrequest('PUT', self.CONN.path)
+        connection.endheaders()
+        while True:
+            if (size == 0):
+                CS.commLog.debug ('Zero length content, uploaded to %s(%s)' % \
+                                  (self.bucketName, self.objectName) )
+            bytes = stream.read(Util.CHUNK_SIZE)
+
+            if not bytes:
+                break
+
+            if (Config.CSProperties['CheckHash'] == 'True'):
+                stream_hash.update ( bytes )
+
+                length = len(bytes)
+            connection.send(bytes)
+        if size == 0:
+            length = size
+
+        if (Config.CSProperties['CheckHash'] == 'True'):
+            hash = base64.encodestring(stream_hash.digest());
             
-            for key in self.CONN.final_headers.keys():
-                connection.putheader(key, self.CONN.final_headers[key])
-                
-            connection.endheaders()
-            connection.send(stream.read())
-                
-            resp = _Response_( connection.getresponse( ) )
+        resp = _Response_( connection.getresponse( ) )
 
-            CS.commLog.debug('RESP MSG: Status=%d(%s).  ---msg follows---\n%s' % \
-                             (resp._get_status_(), resp._get_reason_(), resp._get_msg_()  ) )
-            
-            if ( resp._get_status_( ) == 301 ):
-                raise CSError(resp._get_status_( ), resp._get_reason_(), 'PUT', self.bucketName, self.objectName )
+        CS.commLog.debug('RESP MSG: Status=%d(%s).  ---msg follows---\n%s' % \
+                         (resp._get_status_(), resp._get_reason_(), resp._get_msg_()  ) )
+        
+        if ( resp._get_status_( ) == 204 ):
+            CS.commLog.debug('Sent %d bytes' % size)
+            if self.cb:
+                self.cb ('PUT', self.bucketName, self.objectName, size)
 
-            if ( resp._get_status_( ) < 400 ):
-                CS.commLog.debug('Sent %d bytes' % size )
-                if self.cb:
-                    self.cb ('PUT', self.bucketName, self.objectName, size)
+        connection.close()
 
-            if ( resp._get_status_( ) >= 400):
-                raise CSError(resp._get_status_( ), resp._get_reason_(), 'PUT', self.bucketName, self.objectName )
-
-        except Exception, f:
-            errLog.error ('ERROR %s' % f )
-            raise f
-        finally:
-            connection.close()
-
-        return resp
+        return (resp, hash)
     
     def _stream_data_from_file_(self, fileName, headers):
         """
@@ -1253,133 +1304,50 @@ class SNDA_Object:
         """
         fp = resp = hash = 0
         metadata = {}
-        if headers is None:
-            headers = {}
-        try:
-            if os.path.exists(fileName) == False:
-                raise CSNoSuchFile(fileName)
-            
-            if Config.CSProperties['CheckHash'] == 'True':
-                fileHash = md5()
-            
-            #open file    
-            fp = open(fileName, 'rb')
-            
-            #get file size
-            size = _get_file_size_(fp)
-            
-            if not headers.has_key('Content-Type'):
-                extension = self.objectName.split('.')[-1]
-                headers['Content-Type'] = Types.get_type(extension.lower())
-                
-            headers['Content-Length'] = size
-            
-            file_info = os.stat(fileName)
-            metadata[_MD_LAST_MODIFIED_TIME_] = \
-                    time.strftime(Util.CS_TIME_FORMAT, time.gmtime(file_info.st_mtime))
-            metadata[_MD_CREATE_TIME_] = \
-                    time.strftime(Util.CS_TIME_FORMAT, time.gmtime(file_info.st_ctime))
-            metadata[_MD_SIZE_] = str(file_info.st_size)
-                    
-            if self.CONN.is_secure:
-                connection = httplib.HTTPSConnection('%s:%d' % (self.CONN.server, self.CONN.port))
-            else:
-                connection = httplib.HTTPConnection('%s:%d' % (self.CONN.server, self.CONN.port))
-                
-            self.CONN.prepare_message('PUT', self.bucketName, self.objectName, {}, headers, metadata)
-            
-            CS.commLog.debug('RQST MSG:%s --details follow--\n\t%s - %s:%d\n\tHeaders:%s' % \
-                             ('PUT', self.CONN.path, connection.host, connection.port, self.CONN.final_headers))
-            
-            connection.putrequest('PUT', self.CONN.path)
-            
-            for key in self.CONN.final_headers.keys():
-                connection.putheader(key, self.CONN.final_headers[key])
-                
-            connection.endheaders()
-            
+        if os.path.exists(fileName) == False:
+            raise CSNoSuchFile(fileName)
+        
+        #open file    
+        fp = open(fileName, 'rb')
+        
+        if (Config.CSProperties['CheckHash'] == 'True'):
+            stream_hash = md5()
             while True:
-                if (size == 0):
-                    CS.commLog.debug ('Zero length file(%s), uploaded to %s(%s)' % \
-                                      (fileName, self.bucketName, self.objectName) )                    
                 bytes = fp.read(Util.CHUNK_SIZE)
-                
                 if not bytes:
                     break
- 
-                if (Config.CSProperties['CheckHash'] == 'True'):
-                    fileHash.update ( bytes )
-                    
-                length = len(bytes)
-                connection.send(bytes)
+                stream_hash.update ( bytes )
+            if headers is None:
+                headers = {}
+            headers['Content-MD5'] = base64.encodestring(stream_hash.digest()).strip()
+            fp.seek(0)
+        
+        #get file size
+        size = _get_file_size_(fp)
+        
+        file_info = os.stat(fileName)
+        metadata[_MD_LAST_MODIFIED_TIME_] = \
+                time.strftime(Util.CS_TIME_FORMAT, time.gmtime(file_info.st_mtime))
+        metadata[_MD_CREATE_TIME_] = \
+                time.strftime(Util.CS_TIME_FORMAT, time.gmtime(file_info.st_ctime))
+        metadata[_MD_SIZE_] = str(file_info.st_size)
+        
+        resp, hash = self._stream_data_from_stream_(size, fp, headers, metadata)
                 
-            if size == 0:
-                length = size
-                
-            if (Config.CSProperties['CheckHash'] == 'True'):
-                hash = base64.encodestring(fileHash.digest());
-                
-            resp = _Response_( connection.getresponse( ) )
-
-            CS.commLog.debug('RESP MSG: Status=%d(%s).  ---msg follows---\n%s' % \
-                             (resp._get_status_(), resp._get_reason_(), resp._get_msg_()  ) )
-            
-            if ( resp._get_status_( ) == 301 ):
-                redirect_server = urlparse(resp.http_response.getheader('Location')).hostname
-                if self.CONN.is_secure:
-                    connection = httplib.HTTPSConnection('%s:%d' % (redirect_server, self.CONN.port))
-                else:
-                    connection = httplib.HTTPConnection('%s:%d' % (redirect_server, self.CONN.port))
-                connection.putrequest('PUT', self.CONN.path)
-            
-                for key in self.CONN.final_headers.keys():
-                    connection.putheader(key, self.CONN.final_headers[key])
-                    
-                connection.endheaders()
-                
-                #open file    
-                fp = open(fileName, 'rb')
-                while True:
-                    if (size == 0):
-                        CS.commLog.debug ('Zero length file(%s), uploaded to %s(%s)' % \
-                                          (fileName, self.bucketName, self.objectName) )                    
-                    bytes = fp.read(Util.CHUNK_SIZE)
-                    
-                    if not bytes:
-                        break
-     
-                    if (Config.CSProperties['CheckHash'] == 'True'):
-                        fileHash.update ( bytes )
-                        
-                    length = len(bytes)
-                    connection.send(bytes)
-                    
-                if size == 0:
-                    length = size
-                    
-                if (Config.CSProperties['CheckHash'] == 'True'):
-                    hash = base64.encodestring(fileHash.digest());
-                    
-                resp = _Response_( connection.getresponse( ) )
-
-            if ( resp._get_status_( ) < 400 ):
-                CS.commLog.debug('Sent %d bytes' % length )
-                if self.cb:
-                    self.cb ('PUT', self.bucketName, self.objectName, length)
-
-            if ( resp._get_status_( ) >= 400):
-                raise CSError(resp._get_status_( ), resp._get_reason_(), 'PUT', self.bucketName, self.objectName )
-
-        except Exception, f:
-            errLog.error ('ERROR %s' % f )
-            raise f
-        finally:
-            if fp:
-                fp.close( )
+        CS.commLog.debug('RESP MSG: Status=%d(%s).  ---msg follows---\n%s' % \
+                         (resp._get_status_(), resp._get_reason_(), resp._get_msg_()  ) )
+        
+        if ( resp._get_status_( ) == 301 ):
+            redirect_server = urlparse(resp.http_response.getheader('Location')).hostname
+            fp.seek(0)
+            self.CONN.server = redirect_server
+            resp, hash = self._stream_data_from_stream_(size, fp, headers, metadata)
+        if fp:
+            fp.close( )
 
         return (resp, hash)
     
-    def put_object(self, size, stream, headers, metadata):
+    def put_object_from_stream(self, size, stream, headers=None, metadata=None):
         """
         Streams a local file idenfied by fileName to the ECS object identified 
         by bucketName+keyName.
@@ -1398,19 +1366,25 @@ class SNDA_Object:
         
         while numTries < _NUMBER_OF_RETRIES_:
             try:
-                resp = self._stream_data_from_stream_(size, stream, headers=headers, metadata=metadata)
-                if resp._get_status_( ) == 204:
-                    return resp
+                response, h = self._stream_data_from_stream_(size, stream, headers=headers, metadata=metadata)
+                if response._get_status_( ) >= 200 and response._get_status_( ) <= 299:
+                    return response
+                elif response._get_status_( ) >= 400 and response._get_status_( ) <= 499:
+                    raise CSError(response._get_status_( ),
+                                  response._get_reason_( ),
+                                  'PUT', self.bucketName, self.objectName, 
+                                  response.error.code, 
+                                  response.error.message, 
+                                  response.error.request_id)
                 else:
                     break
-            except CSNoSuchFile, e:
-                errLog.error(str(e))
+            except CSError, e:
                 raise e
             except Exception, f:
                 errLog.error ('ERROR %s' % f )
                 numTries += 1
             
-        return resp
+        return response
 
     def put_object_from_file(self, fileName, headers=None):
         """
@@ -1425,24 +1399,28 @@ class SNDA_Object:
         
         while numTries < _NUMBER_OF_RETRIES_:
             try:
-                resp, h = self._stream_data_from_file_(fileName, headers)
-                if resp._get_status_( ) == 204:
-                    break
-                if Config.CSProperties['CheckHash'] == 'True':
-                    if resp._get_etag_() != h:
-                        errLog.error('Invalid hash. Local:%s, Remote:%s on uploading file %s. Retry Count=%d' % \
-                                       (h, resp._get_etag_(), fileName, numTries ))
-                        numTries += 1
+                response, h = self._stream_data_from_file_(fileName, headers)
+                if response._get_status_( ) >= 200 and response._get_status_( ) <= 299:
+                    return response
+                elif response._get_status_( ) >= 400 and response._get_status_( ) <= 499:
+                    raise CSError(response._get_status_( ),
+                                  response._get_reason_( ),
+                                  'PUT', self.bucketName, self.objectName, 
+                                  response.error.code, 
+                                  response.error.message, 
+                                  response.error.request_id)
                 else:
                     break
-            except CSNoSuchFile, e:
-                errLog.error(str(e))
-                raise e
+            except CSNoSuchFile, e1:
+                errLog.error(str(e1))
+                raise e1
+            except CSError, e2:
+                raise e2
             except Exception, f:
                 errLog.error ('ERROR %s' % f )
                 numTries += 1
-            
-        return
+                
+        return response
     
     def put_object_from_string(self, s, headers=None):
         """
@@ -1458,12 +1436,40 @@ class SNDA_Object:
         while numTries < _NUMBER_OF_RETRIES_:
             try:
                 fp = StringIO.StringIO(s)
-                resp = self._stream_data_from_stream_(len(s), fp, headers, {})
-                if resp._get_status_( ) == 204:
-                    return
+                if (Config.CSProperties['CheckHash'] == 'True'):
+                    stream_hash = md5()
+                    while True:
+                        bytes = fp.read(Util.CHUNK_SIZE)
+                        if not bytes:
+                            break
+                        stream_hash.update ( bytes )
+                    if headers is None:
+                        headers = {}
+                    headers['Content-MD5'] = base64.encodestring(stream_hash.digest()).strip()
+                    fp.seek(0)
+                response, h = self._stream_data_from_stream_(len(s), fp, headers, {})
+                if response._get_status_( ) == 301:
+                    redirect_server = urlparse(response.http_response.getheader('Location')).hostname
+                    fp.seek(0)
+                    self.CONN.server = redirect_server
+                    response, h = self._stream_data_from_stream_(len(s), fp, headers, {})
+                if response._get_status_( ) >= 200 and response._get_status_( ) <= 299:
+                    return response
+                elif response._get_status_( ) >= 400 and response._get_status_( ) <= 499:
+                    raise CSError(response._get_status_( ),
+                                  response._get_reason_( ),
+                                  'PUT', self.bucketName, self.objectName, 
+                                  response.error.code, 
+                                  response.error.message, 
+                                  response.error.request_id)
+                else:
+                    break
+            except CSError, e:
+                raise e
             except Exception, f:
                 errLog.error ('ERROR %s' % f )
                 numTries += 1
+        return response
     
     def get_object_info(self):
         """
@@ -1471,16 +1477,20 @@ class SNDA_Object:
         self.keyName and returns a _GETResponse_ object or raises CSNotFound exception
         """
         try:
-            resp = _GETResponse_(self.CONN.make_request(method = 'HEAD', bucket=self.bucketName, key=self.objectName))
-            
+            response = _GETResponse_(self.CONN.make_request(method = 'HEAD', bucket=self.bucketName, key=self.objectName))
+            if response._get_status_() >= 200 and response._get_status_( ) <= 299:
+                return response.object
+            elif response._get_status_( ) >= 400:
+                raise CSError(response._get_status_( ),
+                              response._get_reason_( ),
+                              'HEAD', self.bucketName, self.objectName)
         except CSError, e:
-            errLog.debug(str(e))
-            raise CSNotFound(self.bucketName, self.objectName)
+            raise e
         except Exception, f:
             errLog.debug('ERROR %s' % f)
             raise f
         
-        return resp.object
+        return None
     
     def get_object(self):
         """

@@ -1,19 +1,33 @@
 '''
 Created on 2011-7-27
-
 '''
 
 class CSError(Exception):
+    def __init__(self, status, reason, method, bucket, key, code=0, message=0, request_id=0):
+        self.status = status
+        self.reason = reason
+        self.method = method
+        self.bucket = bucket
+        self.key = key
+        self.code = code
+        self.message = message
+        self.request_id = request_id
+
+    def __str__(self):
+        return 'Error %d(%s). %s on bucket=%s, key=%s\n' % \
+               (self.status, self.reason, self.method, self.bucket, self.key)
+               
+class CSInternalError(CSError):
     def __init__(self, status, reason, method, bucket, key):
         self.status = status
         self.reason = reason
         self.method = method
         self.bucket = bucket
         self.key = key
-
     def __str__(self):
-        return 'Error %d(%s). %s on bucket=%s, key=%s\n' % \
-               (self.status, self.reason, self.method, self.bucket, self.key)
+        return ('Grandcloud storage service encountered an internal error, please try again.' + \
+            'Error %d(%s). %s on bucket=%s, key=%s\n') % \
+            (self.status, self.reason, self.method, self.bucket, self.key)
                
 class CSNotFound (Exception):
     def __init__(self, bucket, key):
