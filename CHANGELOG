@@ -2,6 +2,10 @@ head:
 
 0.1.1:
 
+- fix bug
+
+- Add put object from string method
+
 - Change return value format of SNDA_Object.get_object_info() method
   
   -- Now the return value provide metadata, size and last_modified properties
