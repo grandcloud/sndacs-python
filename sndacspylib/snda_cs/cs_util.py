@@ -16,6 +16,7 @@ import datetime
 import httplib
 import logging
 import os
+import StringIO
 import sndacspylib.snda_cs_genutilities as Util
 import string
 import time
@@ -1188,6 +1189,10 @@ class SNDA_Object:
         
     def _stream_data_from_stream_(self, size, stream, headers, metadata):
         resp = 0
+        if headers is None:
+            headers = {}
+        if metadata is None:
+            metadata = {}
         
         try:
             if not headers.has_key('Content-Type'):
@@ -1438,6 +1443,27 @@ class SNDA_Object:
                 numTries += 1
             
         return
+    
+    def put_object_from_string(self, s, headers=None):
+        """
+        Streams a string idenfied by objectName to the ECS object identified 
+        by bucketName+keyName.
+        
+        @type s: string
+        @param s: upload content
+        @type headers: dictionary
+        @param headers: metadata
+        """
+        numTries = fp = 0
+        while numTries < _NUMBER_OF_RETRIES_:
+            try:
+                fp = StringIO.StringIO(s)
+                resp = self._stream_data_from_stream_(len(s), fp, headers, {})
+                if resp._get_status_( ) == 204:
+                    return
+            except Exception, f:
+                errLog.error ('ERROR %s' % f )
+                numTries += 1
     
     def get_object_info(self):
         """

@@ -24,7 +24,7 @@ for item in bucket_list:
     
 bucket_name = str(uuid.uuid4())
 # add bucket
-service.add_bucket(bucket_name)
+service.add_bucket(bucket_name, 'huadong-1')
 
 object_name = str(uuid.uuid4())
 # initialize object
@@ -55,6 +55,9 @@ bucket = CSUtil.SNDA_Bucket(connection, bucket_name)
 object_list = bucket.get_list_of_keys_in_bucket("", "")
 for item in object_list:
     print item
+    
+# add object from string
+object.put_object_from_string('I am a string.')
 
 # delete object
 object.delete_object()
