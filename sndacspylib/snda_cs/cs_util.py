@@ -9,6 +9,7 @@ from sndacspylib.snda_cs_mime import MIME_TYPES as Types
 from sndacspylib.snda_cs_exception import *
 from sndacspylib.snda_cs_model import *
 
+import binascii
 import base64
 import cs_rest as CS
 import datetime
@@ -1278,7 +1279,7 @@ class SNDA_Object:
             length = size
 
         if (Config.CSProperties['CheckHash'] == 'True'):
-            hash = base64.encodestring(stream_hash.digest());
+            hash = base64.encodestring(stream_hash.digest()).strip()
             
         resp = _Response_( connection.getresponse( ) )
 
@@ -1368,6 +1369,13 @@ class SNDA_Object:
             try:
                 response, h = self._stream_data_from_stream_(size, stream, headers=headers, metadata=metadata)
                 if response._get_status_( ) >= 200 and response._get_status_( ) <= 299:
+                    digest = binascii.unhexlify(response._get_etag_())
+                    base64md5 = base64.encodestring(digest).strip()
+                    if base64md5 != h:
+                        errLog.error('Invalid hash. Local:%s, Remote:%s on uploading steam. Retry Count=%d' % \
+                                       (h, base64md5, numTries ))
+                        numTries += 1
+                        continue
                     return response
                 elif response._get_status_( ) >= 400 and response._get_status_( ) <= 499:
                     raise CSError(response._get_status_( ),
@@ -1401,6 +1409,13 @@ class SNDA_Object:
             try:
                 response, h = self._stream_data_from_file_(fileName, headers)
                 if response._get_status_( ) >= 200 and response._get_status_( ) <= 299:
+                    digest = binascii.unhexlify(response._get_etag_())
+                    base64md5 = base64.encodestring(digest).strip()
+                    if base64md5 != h:
+                        errLog.error('Invalid hash. Local:%s, Remote:%s on uploading steam. Retry Count=%d' % \
+                                       (h, base64md5, numTries ))
+                        numTries += 1
+                        continue
                     return response
                 elif response._get_status_( ) >= 400 and response._get_status_( ) <= 499:
                     raise CSError(response._get_status_( ),
@@ -1454,6 +1469,13 @@ class SNDA_Object:
                     self.CONN.server = redirect_server
                     response, h = self._stream_data_from_stream_(len(s), fp, headers, {})
                 if response._get_status_( ) >= 200 and response._get_status_( ) <= 299:
+                    digest = binascii.unhexlify(response._get_etag_())
+                    base64md5 = base64.encodestring(digest).strip()
+                    if base64md5 != h:
+                        errLog.error('Invalid hash. Local:%s, Remote:%s on uploading steam. Retry Count=%d' % \
+                                       (h, base64md5, numTries ))
+                        numTries += 1
+                        continue
                     return response
                 elif response._get_status_( ) >= 400 and response._get_status_( ) <= 499:
                     raise CSError(response._get_status_( ),
@@ -1679,7 +1701,7 @@ class SNDA_Object:
                 length = size
                 
             if (Config.CSProperties['CheckHash'] == 'True'):
-                hash = base64.encodestring(fileHash.digest());
+                hash = base64.encodestring(fileHash.digest()).strip()
                 
             resp = _Response_( connection.getresponse( ) )
 
