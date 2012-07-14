@@ -3,7 +3,7 @@ Created on 2011-7-27
 '''
 
 class CSError(Exception):
-    def __init__(self, status, reason, method, bucket, key, code=0, message=0, request_id=0):
+    def __init__(self, status, reason, method, bucket, key, code=0, message=0, request_id=0, end_point=0):
         self.status = status
         self.reason = reason
         self.method = method
@@ -12,6 +12,7 @@ class CSError(Exception):
         self.code = code
         self.message = message
         self.request_id = request_id
+        self.end_point = end_point
 
     def __str__(self):
         return 'Error %d(%s). %s on bucket=%s, key=%s\n' % \

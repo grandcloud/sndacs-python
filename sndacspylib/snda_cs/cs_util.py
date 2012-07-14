@@ -78,7 +78,8 @@ class _Response_:
         
         if http_response.status < httplib.MULTIPLE_CHOICES:
             self.body = http_response.read()
-        else:
+        elif (http_response.status >= 400 and http_response.status <= 499) or \
+            http_response.status == 301:
             handler = self._ErrorHandler_()
             self.body = http_response.read()
             if self.body == '':
@@ -235,16 +236,19 @@ class _Response_:
                 self.error.resource = self.curr_text
             elif name == 'RequestId':
                 self.error.request_id = self.curr_text
+            elif name == 'Endpoint':
+                self.error.end_point = self.curr_text
 
         def characters(self, content):
             self.curr_text = content
                 
         class Error:
-            def __init__(self, code=0, message=0, resource=0, request_id=0):
+            def __init__(self, code=0, message=0, resource=0, request_id=0, end_point=0):
                 self.code = code
                 self.message = message
                 self.resource = resource
                 self.request_id = request_id
+                self.end_point = end_point
             def __repr__(self):
                 return "<Error:%s, RequestId:%s>" % (self.code, self.request_id)
             def __str__(self):
@@ -1146,20 +1150,16 @@ class SNDA_Object:
         """
         Private method that retrieves (if it exists!) the ECS object identified by bucketName+keyName
         """
-        try:
-            response = self.CONN.make_request ( 'GET', bucket=self.bucketName, key=self.objectName, \
-                                                               headers={} )
-            status = response.status
-            if status < 400:
-                appLog.debug('Got %s bytes' % response.getheader('Content-Length'))
-                
-            if self.cb:
-                self.cb('GET', self.bucketName, self.objectName, response.getheader('Content-Length'))
+        response = self.CONN.make_request ( 'GET', bucket=self.bucketName, key=self.objectName, \
+                                                           headers={} )
+        status = response.status
+        if status < 400:
+            appLog.debug('Got %s bytes' % response.getheader('Content-Length'))
             
-            return response
-        except Exception, f:
-            errLog.error('ERROR %s' % f)
-            raise f
+        if self.cb:
+            self.cb('GET', self.bucketName, self.objectName, response.getheader('Content-Length'))
+        
+        return response
         
     def _stream_data_to_file_(self, fileName, file_size):
         """
@@ -1183,51 +1183,49 @@ class SNDA_Object:
         if Config.CSProperties['CheckHash'] == 'True':
             fileHash = md5()
             
-        try:
-            while True:
-                byteRange = 'bytes=%d-%d' % (start, end)
-                resp = _GETResponse_(self.CONN.make_request ( 'GET', bucket=self.bucketName, key=self.objectName, \
-                                                               headers={"Range":byteRange} ))
-                status = resp._get_status_()
-                reason = resp._get_reason_()
+        while True:
+            byteRange = 'bytes=%d-%d' % (start, end)
+            resp = _GETResponse_(self.CONN.make_request ( 'GET', bucket=self.bucketName, key=self.objectName, \
+                                                           headers={"Range":byteRange} ))
+            status = resp._get_status_()
+            reason = resp._get_reason_()
+            
+            if status < 400:
+                appLog.debug('Got %s bytes' % resp._get_content_length_())
                 
-                if status < 400:
-                    appLog.debug('Got %s bytes' % resp._get_content_length_())
+            if status >= 400:
+                return resp, None
+            
+            if self.cb:
+                self.cb('GET', self.bucketName, self.objectName, resp._get_content_length_())
                 
-                if self.cb:
-                    self.cb('GET', self.bucketName, self.objectName, resp._get_content_length_())
-                    
-                if not fp:
-                    fp = open(fileName, 'wb')
-                    
-                fp.write(resp._get_data_())
+            if not fp:
+                fp = open(fileName, 'wb')
                 
-                if Config.CSProperties['CheckHash'] == 'True':
-                    fileHash.update(resp._get_data_())
-                    
-                start = fp.tell()
-                end = start + Util.CHUNK_SIZE - 1
-                if end > long(file_size) - 1:
-                    end = long(file_size) - 1
-                
-                if start >= long(file_size):
-                    break
-                
-                if int(resp._get_content_length_()) != Util.CHUNK_SIZE:
-                    break
-                
-        except Exception, f:
-            errLog.error('ERROR %s' % f)
-            raise f
-        finally:
-            if fp:
-                fp.flush()
-                fp.close()
-                
+            fp.write(resp._get_data_())
+            
             if Config.CSProperties['CheckHash'] == 'True':
-                local_hash = fileHash.hexdigest()
+                fileHash.update(resp._get_data_())
                 
-            return resp, local_hash
+            start = fp.tell()
+            end = start + Util.CHUNK_SIZE - 1
+            if end > long(file_size) - 1:
+                end = long(file_size) - 1
+            
+            if start >= long(file_size):
+                break
+            
+            if int(resp._get_content_length_()) != Util.CHUNK_SIZE:
+                break
+            
+        if fp:
+            fp.flush()
+            fp.close()
+            
+        if Config.CSProperties['CheckHash'] == 'True':
+            local_hash = fileHash.hexdigest()
+            
+        return resp, local_hash
         
     def _stream_data_from_stream_(self, size, stream, headers, metadata):
         resp = hash = 0
@@ -1377,6 +1375,14 @@ class SNDA_Object:
                         numTries += 1
                         continue
                     return response
+                elif response._get_status_( ) == 301:
+                    raise CSError(response._get_status_( ),
+                                  response._get_reason_( ),
+                                  'PUT', self.bucketName, self.objectName, 
+                                  response.error.code, 
+                                  response.error.message, 
+                                  response.error.request_id,
+                                  response.error.end_point)
                 elif response._get_status_( ) >= 400 and response._get_status_( ) <= 499:
                     raise CSError(response._get_status_( ),
                                   response._get_reason_( ),
@@ -1385,7 +1391,9 @@ class SNDA_Object:
                                   response.error.message, 
                                   response.error.request_id)
                 else:
-                    break
+                    raise CSError(response._get_status_( ),
+                                  response._get_reason_( ),
+                                  'PUT', self.bucketName, self.objectName)
             except CSError, e:
                 raise e
             except Exception, f:
@@ -1425,7 +1433,9 @@ class SNDA_Object:
                                   response.error.message, 
                                   response.error.request_id)
                 else:
-                    break
+                    raise CSError(response._get_status_( ),
+                                  response._get_reason_( ),
+                                  'PUT', self.bucketName, self.objectName)
             except CSNoSuchFile, e1:
                 errLog.error(str(e1))
                 raise e1
@@ -1485,7 +1495,9 @@ class SNDA_Object:
                                   response.error.message, 
                                   response.error.request_id)
                 else:
-                    break
+                    raise CSError(response._get_status_( ),
+                                  response._get_reason_( ),
+                                  'PUT', self.bucketName, self.objectName)
             except CSError, e:
                 raise e
             except Exception, f:
@@ -1514,7 +1526,7 @@ class SNDA_Object:
         
         return None
     
-    def get_object(self):
+    def get_object_to_stream(self):
         """
         Retrieves (if it exists!) the ECS object identified by self.bucketName +
         self.keyName.
@@ -1522,23 +1534,30 @@ class SNDA_Object:
         numTries = 0
         while numTries < _NUMBER_OF_RETRIES_:
             try:
-                object_info = self.get_object_info()
-                if object_info.size > 0:
-                    response = self._stream_data_to_stream_()
-                    
-                    if (response.status is httplib.OK) \
-                        or (response.status is httplib.PARTIAL_CONTENT):
-                        break
-                    
-            except CSNotFound, e:
-                errLog.debug(str(e))
-                raise e
+                response = self._stream_data_to_stream_()
+                if response.status >= 200 and response.status <= 299:
+                    return response
+                elif response.status >= 400 and response.status <= 499:
+                    _response_ = _Response_(response)
+                    raise CSError(_response_._get_status_(),
+                                  _response_._get_reason_(),
+                                  'GET', self.bucketName, self.objectName,
+                                  _response_.error.code, 
+                                  _response_.error.message, 
+                                  _response_.error.request_id)
+                else:
+                    raise CSError(_response_._get_status_(),
+                                  _response_._get_reason_(),
+                                  'GET', self.bucketName, self.objectName)
+            except CSNotFound, e1:
+                errLog.debug(str(e1))
+                raise e1
+            except CSError, e2:
+                raise e2
             except Exception, f:
                 errLog.error('ERROR %s' % f)
                 numTries += 1
                 
-        return response
-    
     def get_object_to_file(self, fileName):
         """
         Retrieves (if it exists!) the ECS object identified by self.bucketName +
@@ -1552,52 +1571,69 @@ class SNDA_Object:
             try:
                 object_info = self.get_object_info()
                 if object_info.size > 0:
-                    resp, h = self._stream_data_to_file_(fileName, object_info.size)
-                    
-                    if (resp._get_status_() is httplib.OK) \
-                        or (resp._get_status_() is httplib.PARTIAL_CONTENT):
+                    response, h = self._stream_data_to_file_(fileName, object_info.size)
+                    if response._get_status_() >= 200 and response._get_status_() <= 299:
+                        if Config.CSProperties['CheckHash'] == 'True':
+                            digest = binascii.unhexlify(response._get_etag_())
+                            base64md5 = base64.encodestring(digest).strip()
+                            if base64md5 != h:
+                                appLog.warning('Invalid hash. Local:%s, Remote:%s on uploading file %s. Retry Count=%d' % \
+                                                (h, base64md5, fileName, numTries ))
+                                numTries += 1
+                                continue
                         break
-                    
-                    if Config.CSProperties['CheckHash'] == 'True':
-                        if resp._get_etag_() != h:
-                            appLog.warning('Invalid hash. Local:%s, Remote:%s on uploading file %s. Retry Count=%d' % \
-                                            (h, resp._get_etag_(), fileName, numTries ))
-                            numTries += 1
-                        else:
-                            break
+                    elif response._get_status_() >= 400 and response._get_status_() <= 499:
+                        raise CSError(response._get_status_(),
+                                  response._get_reason_(),
+                                  'GET', self.bucketName, self.objectName,
+                                  response.error.code, 
+                                  response.error.message, 
+                                  response.error.request_id)
+                    else:
+                        raise CSError(response._get_status_(),
+                                      response._get_reason_(),
+                                      'GET', self.bucketName, self.objectName)
                 else:
                     # Handle the case of a zero-length file
                     fp = open(fileName, 'wb')
                     fp.flush()
                     fp.close()
                     break
-            except CSNotFound, e:
-                errLog.debug(str(e))
-                raise e
+            except CSNotFound, e1:
+                errLog.debug(str(e1))
+                raise e1
+            except CSError, e2:
+                raise e2
             except Exception, f:
                 errLog.error('ERROR %s' % f)
                 numTries += 1
-                
-        return
-    
-    def get_object_to_screen_printing(self):
-        """
-        not supported
-        """
-        pass
     
     def delete_object(self):
         """
         Delete the ECS object (if it exists).
         """
         try:
-            resp = _GETResponse_(self.CONN.make_request(method = 'DELETE', bucket=self.bucketName, key=self.objectName))
-            
+            response = _GETResponse_(self.CONN.make_request(method = 'DELETE', bucket=self.bucketName, key=self.objectName))
+            if response._get_status_() >= 200 and response._get_status_( ) <= 299:
+                return response
+            elif response._get_status_( ) >= 400 and response._get_status_( ) <= 499:
+                raise CSError(response._get_status_( ),
+                              response._get_reason_( ),
+                              'DELETE', self.bucketName, self.objectName, 
+                              response.error.code, 
+                              response.error.message, 
+                              response.error.request_id)
+            else:
+                raise CSError(response._get_status_( ),
+                              response._get_reason_( ),
+                              'DELETE', self.bucketName, self.objectName)
+        except CSError, e:
+            raise e
         except Exception, f:
             errLog.debug('ERROR %s' % f)
             raise f
         
-        return resp
+        return response
     
     def initiate_multipart_upload(self):
         """
