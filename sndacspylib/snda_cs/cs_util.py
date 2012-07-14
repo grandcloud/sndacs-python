@@ -388,19 +388,31 @@ class SNDA_CS:
         """
         try:
             self.ListOfBuckets = {}
-            resp = self._ListOfAllBucketsResponse_( self.CONN.make_request ( method = 'GET' ) )
-
-        except Exception, e:
-            logging.error ('ERROR %s' % e)
+            response = self._ListOfAllBucketsResponse_( self.CONN.make_request ( method = 'GET' ) )
+            if response._get_status_( ) >= 400 and response._get_status_( ) <= 499:
+                raise CSError(response._get_status_( ),
+                              response._get_reason_( ),
+                              'GET', None, None, 
+                              response.error.code, 
+                              response.error.message, 
+                              response.error.request_id)
+            elif response._get_status_( ) >= 500:
+                raise CSError(response._get_status_( ),
+                              response._get_reason_( ),
+                              'GET', None, None)
+        except CSError, e:
             raise e
+        except Exception, f:
+            errLog.error ('ERROR %s' % f )
+            return
         
         try:
             import rfc3339
-            for entry in resp.entries:
+            for entry in response.entries:
                 entry.creation_date = rfc3339.parse_datetime(entry.creation_date)
                 self.ListOfBuckets[entry.name] = entry
         except ImportError, e:
-            for entry in resp.entries:
+            for entry in response.entries:
                 entry.creation_date = datetime.datetime.strptime(entry.creation_date.split('+')[0],
                                                                  "%Y-%m-%dT%H:%M:%S.%f")
                 self.ListOfBuckets[entry.name] = entry
@@ -417,12 +429,25 @@ class SNDA_CS:
         try:
             location_xml = Util.generate_bucket_location_xml(location)
             headers = {'Content-Length' : len(location_xml)}
-            resp = _Response_(self.CONN.make_request(method = 'PUT', bucket = bucketName, headers = headers, data = location_xml))
-        except Exception, e:
-            errLog.error('ERROR %s' % e)
+            response = _Response_(self.CONN.make_request(method = 'PUT', 
+                                                         bucket = bucketName, 
+                                                         headers = headers, 
+                                                         data = location_xml))
+            if response._get_status_( ) >= 400 and response._get_status_( ) <= 499:
+                raise CSError(response._get_status_( ),
+                              response._get_reason_( ),
+                              'PUT', bucketName, None, 
+                              response.error.code, 
+                              response.error.message, 
+                              response.error.request_id)
+            elif response._get_status_( ) >= 500:
+                raise CSError(response._get_status_( ),
+                              response._get_reason_( ),
+                              'PUT', bucketName, None)
+        except CSError, e:
             raise e
-        
-        return
+        except Exception, f:
+            errLog.error('ERROR %s' % f)
     
     def delete_bucket(self, bucketName):
         """
@@ -432,39 +457,28 @@ class SNDA_CS:
         @param bucketName: bucket name
         """
         try:
-            resp = _Response_(self.CONN.make_request(method = 'DELETE', bucket = bucketName))
-        except Exception, e:
-            errLog.error('ERROR %s' % e)
+            response = _Response_(self.CONN.make_request(method = 'DELETE', bucket = bucketName))
+            if response._get_status_( ) >= 400 and response._get_status_( ) <= 499:
+                raise CSError(response._get_status_( ),
+                              response._get_reason_( ),
+                              'DELETE', bucketName, None, 
+                              response.error.code, 
+                              response.error.message, 
+                              response.error.request_id)
+            elif response._get_status_( ) >= 500:
+                raise CSError(response._get_status_( ),
+                              response._get_reason_( ),
+                              'DELETE', bucketName, None)
+        except CSError, e:
             raise e
-        
-    def delete_bucket_recursive(self, bucketName):
-        """
-        Recursively delete all keys in the bucket and then deletes the bucket.
-        
-        @type bucketName: string
-        @param bucketName: bucket name
-        """
-        try:
-            BucketContent = SNDA_Bucket(self.CONN, bucketName)
-            BucketContent.get_list_of_keys_in_bucket()
-            for entry in BucketContent.bucketContent:
-                key = SNDA_Object(self.CONN, bucketName, entry['name'])
-                key.delete_object()
-                #really need a little sleep
-                time.sleep(0.00)
-            
-            self.delete_bucket(bucketName)                
-            
-        except Exception, e:
-            errLog.error('ERROR %s' % e)
-            raise e
-            
-        return
+        except Exception, f:
+            errLog.error('ERROR %s' % f)
         
 
 def _upload_dir_cb_(bucketName, dirname, names):
-    conn = CS.SNDAAuthConnection(Config.CSProperties['AccessKey'], \
-                                       Config.CSProperties['SecretKey'], ( Config.CSProperties['SecureComm'] == True))
+    conn = CS.SNDAAuthConnection(Config.CSProperties['AccessKey'], 
+                                 Config.CSProperties['SecretKey'], 
+                                 ( Config.CSProperties['SecureComm'] == True))
     
     num_files_uploaded = 0
     
@@ -493,8 +507,9 @@ def _upload_dir_cb_(bucketName, dirname, names):
 
 
 def _download_dir_cb_(parent_dir, child_dir, child_file, arg):
-    conn = CS.SNDAAuthConnection(Config.CSProperties['AccessKey'], \
-                                       Config.CSProperties['SecretKey'], ( Config.CSProperties['SecureComm'] == True))
+    conn = CS.SNDAAuthConnection(Config.CSProperties['AccessKey'], 
+                                 Config.CSProperties['SecretKey'], 
+                                 ( Config.CSProperties['SecureComm'] == True))
     
     num_files = 0
     for entry in child_dir:
@@ -1522,7 +1537,6 @@ class SNDA_Object:
             raise e
         except Exception, f:
             errLog.debug('ERROR %s' % f)
-            raise f
         
         return None
     
@@ -1631,7 +1645,6 @@ class SNDA_Object:
             raise e
         except Exception, f:
             errLog.debug('ERROR %s' % f)
-            raise f
         
         return response
     
