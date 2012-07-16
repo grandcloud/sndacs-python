@@ -12,8 +12,8 @@ sndacs library provides access to [SNDA Cloud Storage](http://www.grandcloud.cn/
 
     import sndacspylib.snda_cs.cs_util as CSUtil
     from sndacspylib.snda_cs_config import Config
-    connection = CSUtil.CS.SNDAAuthConnection(Config.CSProperties['AccessKey'], \
-                                              Config.CSProperties['SecretKey'], \
+    connection = CSUtil.CS.SNDAAuthConnection(Config.CSProperties['AccessKey'], 
+                                              Config.CSProperties['SecretKey'], 
                                               (Config.CSProperties['SecureComm']==False))
 
 ### Initialize the service
@@ -24,6 +24,11 @@ sndacs library provides access to [SNDA Cloud Storage](http://www.grandcloud.cn/
 ### List buckets
 
     bucket_list = service.get_list_of_buckets()
+    for bucket in bucket_list:
+    	'''
+	bucket instance has following attributes
+	'''
+	print bucket.name, bucket.creation_date, bucket.location
 
 ### Add bucket
 
@@ -41,6 +46,13 @@ sndacs library provides access to [SNDA Cloud Storage](http://www.grandcloud.cn/
 ### List objects
 
     object_list = bucket.get_list_of_keys_in_bucket(prefixDir = 'abc', delimiter='/')
+    for object in object_list:
+    	'''
+	object instance has following attributes
+	'''
+    	print object.name, object.last_modified, \
+	      object.etag, object.size, \
+	      object.storage_class, object.owner
 
 ### Generate bucket policy string
 
@@ -50,11 +62,11 @@ sndacs library provides access to [SNDA Cloud Storage](http://www.grandcloud.cn/
     resources = "*"
     conditions = {ConditionTypes.Bool: {AvailableKeys.SecureTransport: True}, \
                   ConditionTypes.IpAddress: {AvailableKeys.SourceIp: "192.168.0.24"}}
-    statement = PolicyStatement(Sid = None, \
-                                Effect = effect, \
-                                Principal = None, \
-                                Action = actions, \
-                                Resource = resources, \
+    statement = PolicyStatement(Sid = None, 
+                                Effect = effect, 
+                                Principal = None, 
+                                Action = actions, 
+                                Resource = resources, 
                                 Condition = conditions)
     Statement.sid_regenerate()
     policy = BucketPolicy(Id = "your_id", Version = None, Statement = [statement])
@@ -64,6 +76,16 @@ sndacs library provides access to [SNDA Cloud Storage](http://www.grandcloud.cn/
 ### Set bucket policy
 
     bucket.set_policy(policy_xml)
+
+### Catch invalid parameter error
+
+    try:
+	bucket.set_policy(None)
+    except InvalidParameter, e:
+        '''
+	Do some other things you want to do
+	'''
+    	pass
 
 ### Get bucket policy
 
