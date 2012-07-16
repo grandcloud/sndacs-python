@@ -25,10 +25,10 @@ sndacs library provides access to [SNDA Cloud Storage](http://www.grandcloud.cn/
 
     bucket_list = service.get_list_of_buckets()
     for bucket in bucket_list:
-    	'''
-	bucket instance has following attributes
-	'''
-	print bucket.name, bucket.creation_date, bucket.location
+        '''
+        bucket instance has following attributes
+        '''
+        print bucket.name, bucket.creation_date, bucket.location
 
 ### Add bucket
 
@@ -47,12 +47,12 @@ sndacs library provides access to [SNDA Cloud Storage](http://www.grandcloud.cn/
 
     object_list = bucket.get_list_of_keys_in_bucket(prefixDir = 'abc', delimiter='/')
     for object in object_list:
-    	'''
-	object instance has following attributes
-	'''
+        '''
+        object instance has following attributes
+        '''
     	print object.name, object.last_modified, \
-	      object.etag, object.size, \
-	      object.storage_class, object.owner
+    	      object.etag, object.size, \
+    	      object.storage_class, object.owner
 
 ### Generate bucket policy string
 
@@ -80,11 +80,11 @@ sndacs library provides access to [SNDA Cloud Storage](http://www.grandcloud.cn/
 ### Catch invalid parameter error
 
     try:
-	bucket.set_policy(None)
+        bucket.set_policy(None)
     except InvalidParameter, e:
         '''
-	Do some other things you want to do
-	'''
+        Do some other things you want to do
+        '''
     	pass
 
 ### Get bucket policy
@@ -119,10 +119,10 @@ sndacs library provides access to [SNDA Cloud Storage](http://www.grandcloud.cn/
 ### Catch response error exception
 
     try:
-	print bucket.get_policy()
+        print bucket.get_policy()
     except CSError, e:
     	print e.status, e.reason
-	print e.code, e.message, e.request_id
+    	print e.code, e.message, e.request_id
 
 ## Copyright
 
