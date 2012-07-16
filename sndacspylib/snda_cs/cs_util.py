@@ -956,7 +956,7 @@ class SNDA_Object:
             _Response_.__init__(self, http_repsonse)
             if self._get_status_() < httplib.MULTIPLE_CHOICES:
                 handler = self._ListPartsResultHandler_()
-                xml.sax.parseString(self.body, handler)
+                xml.sax.parseString(self.body.replace("&quot;", ""), handler)
                 self.result = handler.result
             else:
                 self.result = None
@@ -1171,9 +1171,11 @@ class SNDA_Object:
             
         return resp, local_hash
         
-    def _stream_data_from_stream_(self, size, stream, headers, metadata):
+    def _stream_data_from_stream_(self, size, stream, query_args, headers, metadata):
         resp = hash = 0
         
+        if query_args is None:
+            query_args = {}
         if headers is None:
             headers = {}
         if metadata is None:
@@ -1192,7 +1194,7 @@ class SNDA_Object:
         else:
             connection = httplib.HTTPConnection('%s:%d' % (self.CONN.server, self.CONN.port))
             
-        self.CONN.prepare_message('PUT', self.bucketName, self.objectName, {}, headers, metadata)
+        self.CONN.prepare_message('PUT', self.bucketName, self.objectName, query_args, headers, metadata)
         
         CS.commLog.debug('RQST MSG:%s --details follow--\n\t%s - %s:%d\n\tHeaders:%s' % \
                          ('PUT', self.CONN.path, connection.host, connection.port, self.CONN.final_headers))
@@ -1228,7 +1230,7 @@ class SNDA_Object:
         CS.commLog.debug('RESP MSG: Status=%d(%s).  ---msg follows---\n%s' % \
                          (resp._get_status_(), resp._get_reason_(), resp._get_msg_()  ) )
         
-        if ( resp._get_status_( ) == 204 ):
+        if ( resp._get_status_( ) >= 200 and resp._get_status_( ) <= 299 ):
             CS.commLog.debug('Sent %d bytes' % size)
             if self.cb:
                 self.cb ('PUT', self.bucketName, self.objectName, size)
@@ -1275,7 +1277,7 @@ class SNDA_Object:
                 time.strftime(Util.CS_TIME_FORMAT, time.gmtime(file_info.st_ctime))
         metadata[_MD_SIZE_] = str(file_info.st_size)
         
-        resp, hash = self._stream_data_from_stream_(size, fp, headers, metadata)
+        resp, hash = self._stream_data_from_stream_(size, fp, {}, headers, metadata)
                 
         CS.commLog.debug('RESP MSG: Status=%d(%s).  ---msg follows---\n%s' % \
                          (resp._get_status_(), resp._get_reason_(), resp._get_msg_()  ) )
@@ -1284,7 +1286,7 @@ class SNDA_Object:
             redirect_server = urlparse(resp.http_response.getheader('Location')).hostname
             fp.seek(0)
             self.CONN.server = redirect_server
-            resp, hash = self._stream_data_from_stream_(size, fp, headers, metadata)
+            resp, hash = self._stream_data_from_stream_(size, fp, {}, headers, metadata)
         if fp:
             fp.close( )
 
@@ -1309,7 +1311,7 @@ class SNDA_Object:
         
         while numTries < _NUMBER_OF_RETRIES_:
             try:
-                response, h = self._stream_data_from_stream_(size, stream, headers=headers, metadata=metadata)
+                response, h = self._stream_data_from_stream_(size, stream, {}, headers=headers, metadata=metadata)
                 if response._get_status_( ) >= 200 and response._get_status_( ) <= 299:
                     digest = binascii.unhexlify(response._get_etag_())
                     base64md5 = base64.encodestring(digest).strip()
@@ -1416,12 +1418,12 @@ class SNDA_Object:
                         headers = {}
                     headers['Content-MD5'] = base64.encodestring(stream_hash.digest()).strip()
                     fp.seek(0)
-                response, h = self._stream_data_from_stream_(len(s), fp, headers, {})
+                response, h = self._stream_data_from_stream_(len(s), fp, {}, headers, {})
                 if response._get_status_( ) == 301:
                     redirect_server = urlparse(response.http_response.getheader('Location')).hostname
                     fp.seek(0)
                     self.CONN.server = redirect_server
-                    response, h = self._stream_data_from_stream_(len(s), fp, headers, {})
+                    response, h = self._stream_data_from_stream_(len(s), fp, {}, headers, {})
                 if response._get_status_( ) >= 200 and response._get_status_( ) <= 299:
                     digest = binascii.unhexlify(response._get_etag_())
                     base64md5 = base64.encodestring(digest).strip()
@@ -1583,16 +1585,23 @@ class SNDA_Object:
         """
         query_args = {"uploads" : None}
         try:
-            resp = self._InitiateMultiuploadResponse_(self.CONN.make_request(method = 'POST', bucket=self.bucketName, key=self.objectName, query_args=query_args))
-            
-            if resp._get_status_( ) == 200:
+            response = self._InitiateMultiuploadResponse_(self.CONN.make_request(method = 'POST', bucket=self.bucketName, key=self.objectName, query_args=query_args))
+            if response._get_status_() >= 200 and response._get_status_( ) <= 299:
                 CS.commLog.debug('Initiate key /%s/%s as multiupload.' % (self.bucketName, self.objectName))
-                self.init_result = resp.init_result
-                
-            if ( resp._get_status_( ) >= 400):
-                raise CSError(resp._get_status_( ), resp._get_reason_( ), 'POST', self.bucketName, self.objectName )
-            
-            
+                self.init_result = response.init_result
+            elif response._get_status_( ) >= 400 and response._get_status_( ) <= 499:
+                raise CSError(response._get_status_( ),
+                              response._get_reason_( ),
+                              'POST', self.bucketName, self.objectName, 
+                              response.error.code, 
+                              response.error.message, 
+                              response.error.request_id)
+            else:
+                raise CSError(response._get_status_( ),
+                              response._get_reason_( ),
+                              'POST', self.bucketName, self.objectName)
+        except CSError, e:
+            raise e
         except Exception, f:
             errLog.debug ('ERROR %s' % f)
             raise f
@@ -1616,7 +1625,7 @@ class SNDA_Object:
         query_args = {"uploadId" : abort_id,
                       "partNumber" : part_number}
         
-        fp = resp = hash = 0
+        fp = hash = 0
         metadata = headers = {}
         try:
             if os.path.exists(fileName) == False:
@@ -1631,70 +1640,34 @@ class SNDA_Object:
             #get file size
             size = _get_file_size_(fp)
             
-#            headers['Content-Type'] = 'application/octet-stream'
             headers['Content-Length'] = size
-#            headers['Expect'] = '100-continue'
-#            headers['Connection'] = 'keep-alive'
-            
-#            file_info = os.stat(fileName)
-#            metadata[_MD_LAST_MODIFIED_TIME_] = \
-#                    time.strftime(Util.CS_TIME_FORMAT, time.gmtime(file_info.st_mtime))
-#            metadata[_MD_CREATE_TIME_] = \
-#                    time.strftime(Util.CS_TIME_FORMAT, time.gmtime(file_info.st_ctime))
-#            metadata[_MD_SIZE_] = str(file_info.st_size)
                     
-            if self.CONN.is_secure:
-                connection = httplib.HTTPSConnection('%s:%d' % (self.CONN.server, self.CONN.port))
+            response, hash = self._stream_data_from_stream_(size, fp, query_args, headers, metadata)
+            
+            if response._get_status_( ) == 301:
+                redirect_server = urlparse(response.http_response.getheader('Location')).hostname
+                fp.seek(0)
+                self.CONN.server = redirect_server
+                response, hash = self._stream_data_from_stream_(size, fp, query_args, headers, metadata)
+
+            if response._get_status_( ) >= 200 and response._get_status_( ) <= 299:
+                CS.commLog.debug('Sent %d bytes' % size )
+                return Part(part_number, response._get_etag_with_quote_())
+            elif response._get_status_( ) >= 400 and response._get_status_( ) <= 499:
+                raise CSError(response._get_status_( ),
+                              response._get_reason_( ),
+                              'PUT', self.bucketName, self.objectName, 
+                              response.error.code, 
+                              response.error.message, 
+                              response.error.request_id)
             else:
-                connection = httplib.HTTPConnection('%s:%d' % (self.CONN.server, self.CONN.port))
-                
-            self.CONN.prepare_message('PUT', self.bucketName, self.objectName, query_args, headers, metadata)
-            
-            CS.commLog.debug('RQST MSG:%s --details follow--\n\t%s - %s:%d\n\tHeaders:%s' % \
-                             ('PUT', self.CONN.path, connection.host, connection.port, self.CONN.final_headers))
-            
-            connection.putrequest('PUT', self.CONN.path)
-            
-            for key in self.CONN.final_headers.keys():
-                connection.putheader(key, self.CONN.final_headers[key])
-                
-            connection.endheaders()
-            
-            while True:
-                if (size == 0):
-                    CS.commLog.debug ('Zero length file(%s), uploaded to %s(%s)' % \
-                                      (fileName, self.bucketName, self.objectName) )                    
-                bytes = fp.read(Util.CHUNK_SIZE)
-                
-                if not bytes:
-                    break
- 
-                if (Config.CSProperties['CheckHash'] == 'True'):
-                    fileHash.update ( bytes )
-                    
-                length = len(bytes)
-                connection.send(bytes)
-                
-            if size == 0:
-                length = size
-                
-            if (Config.CSProperties['CheckHash'] == 'True'):
-                hash = base64.encodestring(fileHash.digest()).strip()
-                
-            resp = _Response_( connection.getresponse( ) )
-
-            CS.commLog.debug('RESP MSG: Status=%d(%s).  ---msg follows---\n%s' % \
-                             (resp._get_status_(), resp._get_reason_(), resp._get_msg_()  ) )
-            
-            if (resp._get_status_( ) < 400 ):
-                CS.commLog.debug('Sent %d bytes' % length )
-                if self.cb:
-                    self.cb ('PUT', self.bucketName, self.objectName, length)
-                return Part(part_number, resp._get_etag_with_quote_())
-
-            if ( resp._get_status_( ) >= 400):
-                raise CSError(resp._get_status_( ), resp._get_reason_(), 'PUT', self.bucketName, self.objectName )
-
+                raise CSError(response._get_status_( ),
+                              response._get_reason_( ),
+                              'PUT', self.bucketName, self.objectName)
+        except CSNoSuchFile, e1:
+            raise e1
+        except CSError, e2:
+            raise e2
         except Exception, f:
             errLog.error ('ERROR %s' % f )
             raise f
@@ -1722,10 +1695,23 @@ class SNDA_Object:
                       "partNumber" : part_number}
         headers = {}
         try:
-            resp = _Response_(self.CONN.make_request(method = 'PUT', bucket=self.bucketName, key=self.objectName, headers=headers, query_args=query_args, data=data))
-            if resp._get_status_( ) == 204:
+            response = _Response_(self.CONN.make_request(method = 'PUT', bucket=self.bucketName, key=self.objectName, headers=headers, query_args=query_args, data=data))
+            if response._get_status_() >= 200 and response._get_status_( ) <= 299:
                 CS.commLog.debug('Sent %d bytes' % len(data))
-                return Part(part_number, resp._get_etag_with_quote_())
+                return Part(part_number, response._get_etag_with_quote_())
+            elif response._get_status_( ) >= 400 and response._get_status_( ) <= 499:
+                raise CSError(response._get_status_( ),
+                              response._get_reason_( ),
+                              'PUT', self.bucketName, self.objectName, 
+                              response.error.code, 
+                              response.error.message, 
+                              response.error.request_id)
+            else:
+                raise CSError(response._get_status_( ),
+                              response._get_reason_( ),
+                              'PUT', self.bucketName, self.objectName)
+        except CSError, e:
+            raise e
         except Exception, f:
             errLog.error ('ERROR %s' % f )
             raise f
@@ -1745,16 +1731,22 @@ class SNDA_Object:
             abort_id = self.init_result.upload_id
         query_args = {"uploadId" : abort_id}
         try:
-            resp = _Response_(self.CONN.make_request(method = 'DELETE', bucket=self.bucketName, key=self.objectName, query_args=query_args))
-            
-            if resp._get_status_( ) == 204:
+            response = _Response_(self.CONN.make_request(method = 'DELETE', bucket=self.bucketName, key=self.objectName, query_args=query_args))
+            if response._get_status_() >= 200 and response._get_status_( ) <= 299:
                 CS.commLog.debug('Abort multiupload of uploadId %s.' % abort_id)
-                
+            elif response._get_status_( ) >= 400 and response._get_status_( ) <= 499:
+                raise CSError(response._get_status_( ),
+                              response._get_reason_( ),
+                              'DELETE', self.bucketName, self.objectName, 
+                              response.error.code, 
+                              response.error.message, 
+                              response.error.request_id)
+            else:
+                raise CSError(response._get_status_( ),
+                              response._get_reason_( ),
+                              'DELETE', self.bucketName, self.objectName)
         except CSError, e:
-            if e.status == 404:
-                raise CSNoSuchUpload(abort_id)
             raise e
-            
         except Exception, f:
             errLog.debug ('ERROR %s' % f)
             raise f
@@ -1775,13 +1767,22 @@ class SNDA_Object:
             abort_id = self.init_result.upload_id
         query_args = {"uploadId" : abort_id}
         try:
-            resp = self._CompleteMultipartUploadResponse_(self.CONN.make_request(method = 'POST', bucket=self.bucketName, key=self.objectName, query_args=query_args, data=complete_parts))
-            self.complete_parts_result = resp.result
+            response = self._CompleteMultipartUploadResponse_(self.CONN.make_request(method = 'POST', bucket=self.bucketName, key=self.objectName, query_args=query_args, data=complete_parts))
+            if response._get_status_() >= 200 and response._get_status_( ) <= 299:
+                self.complete_parts_result = response.result
+            elif response._get_status_( ) >= 400 and response._get_status_( ) <= 499:
+                raise CSError(response._get_status_( ),
+                              response._get_reason_( ),
+                              'POST', self.bucketName, self.objectName, 
+                              response.error.code, 
+                              response.error.message, 
+                              response.error.request_id)
+            else:
+                raise CSError(response._get_status_( ),
+                              response._get_reason_( ),
+                              'POST', self.bucketName, self.objectName)
         except CSError, e:
-            if e.status == 404:
-                raise CSNoSuchUpload(abort_id)
             raise e
-        
         except Exception, f:
             errLog.debug ('ERROR %s' % f)
             raise f
@@ -1808,16 +1809,23 @@ class SNDA_Object:
         if part_number_marker:
             query_args["part-number-marker"] = part_number_marker
         try:
-            resp = self._ListPartsResponse_(self.CONN.make_request(method = 'GET', bucket=self.bucketName, key=self.objectName, query_args=query_args))
-            
-            if resp._get_status_( ) == 200:
-                self.list_parts_result = resp.result
-                
+            response = self._ListPartsResponse_(self.CONN.make_request(method = 'GET', bucket=self.bucketName, key=self.objectName, query_args=query_args))
+            if response._get_status_() >= 200 and response._get_status_( ) <= 299:
+                self.list_parts_result = response.result
+                return self.list_parts_result
+            elif response._get_status_( ) >= 400 and response._get_status_( ) <= 499:
+                raise CSError(response._get_status_( ),
+                              response._get_reason_( ),
+                              'GET', self.bucketName, self.objectName, 
+                              response.error.code, 
+                              response.error.message, 
+                              response.error.request_id)
+            else:
+                raise CSError(response._get_status_( ),
+                              response._get_reason_( ),
+                              'GET', self.bucketName, self.objectName)
         except CSError, e:
-            if e.status == 404:
-                raise CSNoSuchUpload(abort_id)
             raise e
-        
         except Exception, f:
             errLog.debug ('ERROR %s' % f)
             raise f
