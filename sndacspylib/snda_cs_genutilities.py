@@ -1,6 +1,5 @@
 '''
 Created on 2011-7-27
-
 '''
 
 from hashlib import md5
@@ -288,6 +287,7 @@ def object_convert_to_xml(document, inst, element=None):
             element.appendChild(element_node)
     if not element:
         document.appendChild(root)
+    return document
         
 def generate_bucket_location_xml(location):
     document = Document()

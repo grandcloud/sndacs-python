@@ -124,6 +124,41 @@ sndacs library provides access to [SNDA Cloud Storage](http://www.grandcloud.cn/
     	print e.status, e.reason
     	print e.code, e.message, e.request_id
 
+### initialize multiupload
+
+    object.initiate_multipart_upload()
+
+### abort multiupload
+
+    object.abort_multipart_upload(object.init_result.upload_id)
+
+### list parts
+
+    list_parts_result = object.list_parts(object.init_result.upload_id)
+
+### upload part from file
+
+    part1 = object.upload_part_from_file(object.init_result.upload_id,
+                                         '1',
+                                         'filepath/file')
+
+### upload part from data
+
+    part2 = object.upload_part_from_data(object.init_result.upload_id,
+                                         '2',
+                                         'I am No.2.')
+
+### generate complete mulitpart upload xml document
+
+    from xml.dom.minidom import Document
+    complete_content = CompleteMultipartUpload([part1, part2])
+    document = Util.object_convert_to_xml(Document(), complete_content)
+
+### complete multiupload
+
+    object.complete_multipart_upload(object.init_result.upload_id, document.toxml())
+
+
 ## Copyright
 
 Copyright (c) 2012 grandcloud.cn.

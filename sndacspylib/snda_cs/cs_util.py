@@ -473,65 +473,6 @@ class SNDA_CS:
             raise e
         except Exception, f:
             errLog.error('ERROR %s' % f)
-        
-
-def _upload_dir_cb_(bucketName, dirname, names):
-    conn = CS.SNDAAuthConnection(Config.CSProperties['AccessKey'], 
-                                 Config.CSProperties['SecretKey'], 
-                                 ( Config.CSProperties['SecureComm'] == True))
-    
-    num_files_uploaded = 0
-    
-    for entry in names:
-        full_path = os.path.join(dirname, entry)
-        if os.path.isfile(full_path):
-            (drive, keyName) = os.path.splitdrive(full_path)
-            keyName = os.path.normcase(keyName)
-            keyName = os.path.normpath(keyName)
-            if (keyName[0] == os.sep):
-                keyName = keyName[1:]
-                
-            #convert file name to 'home|opt|cache|userinfo_cache.data' form
-            keyName = string.replace(keyName, os.sep, Util.DELIMITER)
-                        
-            key = SNDA_Object( conn, bucketName, keyName )
-            num_files_uploaded +=1
-            key.put_object_from_file ( full_path )
-            appLog.debug( '[%d] Processing [%s]: Uploaded <%s>' % (num_files_uploaded, dirname, entry) )
-            
-            time.sleep(0.00)
-    
-    appLog.info ('Uploaded [%d] files in <%s> to bucket=%s' % (num_files_uploaded, dirname, bucketName) )
-    
-    return
-
-
-def _download_dir_cb_(parent_dir, child_dir, child_file, arg):
-    conn = CS.SNDAAuthConnection(Config.CSProperties['AccessKey'], 
-                                 Config.CSProperties['SecretKey'], 
-                                 ( Config.CSProperties['SecureComm'] == True))
-    
-    num_files = 0
-    for entry in child_dir:
-        entry = string.replace ( entry, Util.DELIMITER, os.sep)
-        dir_path = arg[1]+os.sep+entry
-        if ( os.path.exists (dir_path) == False):
-            os.mkdir ( dir_path)
-            appLog.debug ('Created <DIR> %s' % dir_path)
-            
-    for entry in child_file:
-        file_name = string.replace ( entry, Util.DELIMITER, os.sep)        
-        file_path = arg[1]+os.sep+file_name
-        key = SNDA_Object ( conn, arg[0], entry)
-        fDownloaded = key.sync_download_to_file ( file_path)
-        if (fDownloaded):
-            appLog.debug ('Downloded %s' % entry )
-            num_files += 1
-        
-    appLog.info ( '<%s>: Downloaded %d files' % (parent_dir, num_files) )
-    
-    return 
-
 
 class SNDA_Bucket:
     """
@@ -844,41 +785,6 @@ class SNDA_Bucket:
                 
             return (self.bucketContent, self.dir_stack)
     
-    def upload_dir(self, root_dir):
-        """
-        Uploads all files under root_dir up to the bucket identified by self.bucketName recursively
-        
-        @type root_dir: string
-        @param root_dir: folder path to be upload
-        """
-        
-        if root_dir is '':
-            raise InvalidAttribute('root_dir is empty')
-        elif not os.path.isdir(root_dir):
-            raise InvalidAttribute('root_dir is not directory')
-        
-        os.path.walk(root_dir, _upload_dir_cb_, self.bucketName)
-        
-        return
-    
-    def download_dir(self, root_dir):
-        """
-        Downloads content of self.bucketName into a FS tree structure starting at root_dir
-        
-        @type root_dir: string
-        @param root_dir: folder path to download into
-        """
-        
-        if root_dir is '':
-            raise InvalidAttribute('root_dir is empty')
-        
-        if os.path.exists(root_dir) is True and os.path.isdir(root_dir) is True:
-            self._reinit_()
-            self.get_keys_in_bucket_as_fstree()
-            root_dir = os.path.normcase(root_dir)
-            root_dir = os.path.normpath(root_dir)
-            self._walk_dir_(self.root_dir, _download_dir_cb_, [self.bucketName, root_dir])
-            
     def set_policy(self, policy):
         """
         Set policy of self.bucketName
