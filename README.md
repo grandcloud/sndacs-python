@@ -94,6 +94,14 @@ sndacs library provides access to [SNDA Cloud Storage](http://www.grandcloud.cn/
 
     object.delete_object()
 
+### Catch response error exception
+
+    try:
+	print bucket.get_policy()
+    except CSError, e:
+    	print e.status, e.reason
+	print e.code, e.message, e.request_id
+
 ## Copyright
 
 Copyright (c) 2012 grandcloud.cn.
