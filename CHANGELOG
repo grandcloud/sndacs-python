@@ -2,7 +2,9 @@ head:
 
 0.1.1:
 
-- fix bug
+- Coordinate the error exception
+
+- Fix bug
 
 - Add put object from string method
 
