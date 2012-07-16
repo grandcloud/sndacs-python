@@ -605,13 +605,22 @@ class SNDA_Bucket:
                     self.display_name = display_name
 
             class ListEntry:
-                def __init__(self, key='', last_modified=None, etag='', size=0, storage_class='', owner=None):
-                    self.key = key
+                def __init__(self, name='', last_modified=None, etag='', size=0, storage_class='', owner=None):
+                    self.name = name
                     self.last_modified = last_modified
                     self.etag = etag
                     self.size = size
                     self.storage_class = storage_class
                     self.owner = owner
+                def __to_dict__(self):
+                    return {'name': self.name,
+                            'last_modified': str(self.last_modified),
+                            'etag': self.etag,
+                            'size': self.size,
+                            'storage_class': self.storage_class,
+                            'owner': self.owner}
+                def __str__(self):
+                    return json.dumps(self.__to_dict__())
 
             class CommonPrefixEntry:
                 def __init(self, prefix=''):
@@ -633,7 +642,7 @@ class SNDA_Bucket:
                     self.common_prefixes.append(self.curr_common_prefix)
                     self.is_echoed_prefix_set = False
                 elif name == 'Key':
-                    self.curr_entry.key = self.curr_text
+                    self.curr_entry.name = self.curr_text
                 elif name == 'LastModified':
                     if IMPORT_FLAG:
                         self.curr_entry.last_modified = rfc3339.parse_datetime(self.curr_text)
@@ -706,7 +715,7 @@ class SNDA_Bucket:
                         
         return
     
-    def get_list_of_keys_in_bucket ( self, prefixDir=u'', delimiter=Util.DELIMITER):
+    def get_list_of_keys_in_bucket ( self, marker=None, prefixDir=None, delimiter=None):
         """
         This function does handles pagination.  Get's all keys in the bucket identified by 
         self.bucketName, 1000 at a time and store them in self.bucketContent
@@ -716,7 +725,7 @@ class SNDA_Bucket:
         @type delimiter: string
         @param delimiter: specified delimiter to organize fs tree
         """
-        marker = ''
+        self.bucketContent = []
         query_args = {}
         while True:
             try:
@@ -728,33 +737,35 @@ class SNDA_Bucket:
                     query_args['prefix'] = prefixDir
                 resp = self.CONN.make_request ( method='GET', bucket=self.bucketName, \
                                                 query_args=query_args )
-            except Exception, e:
-                errLog.error ('ERROR %s' % e)
-                raise e 
-
-            keylist = self._ListBucketResponse_( resp )
+                list_response = self._ListBucketResponse_( resp )
+                if list_response._get_status_( ) >= 400 and list_response._get_status_( ) <= 499:
+                    raise CSError(list_response._get_status_( ),
+                                  list_response._get_reason_( ),
+                                  'GET', self.bucketName, None, 
+                                  list_response.error.code, 
+                                  list_response.error.message, 
+                                  list_response.error.request_id)
+                elif list_response._get_status_( ) >= 500:
+                    raise CSError(list_response._get_status_( ),
+                                  list_response._get_reason_( ),
+                                  'GET', self.bucketName, None)
+            except CSError, e:
+                raise e
+            except Exception, f:
+                errLog.error ('ERROR %s' % f)
+                raise f 
             
-            if self.cb:
-                self.cb('ALLKEYS', self.bucketName, '', self.count )
-                
-            for entry in keylist.entries:
-                if entry and entry.owner:
-                    display_name = entry.owner.display_name
-                else:
-                    display_name = None
-                
-                self.bucketContent.append( {'index': self.count, 'type': 'file', 'name':entry.key, 
-                                            'size':entry.size, 'owner':display_name, \
-                                            'last_modified':entry.last_modified, 'etag':entry.etag} )
+            for entry in list_response.entries:
+                self.bucketContent.append(entry)
                 self.count = self.count + 1
 
-            if (keylist.is_truncated == False):
+            if (list_response.is_truncated == False):
                 # we are done...
                 break
-            if marker == entry.key:
+            if marker == entry.name:
                 break
             else:
-                marker = entry.key
+                marker = entry.name
 
         return self.bucketContent
     
@@ -775,23 +786,31 @@ class SNDA_Bucket:
                 query_args['delimiter'] = delimiter
             resp = self.CONN.make_request ( method='GET', bucket=self.bucketName, \
                                             query_args=query_args )
+            list_response = self._ListBucketResponse_( resp )
+            if list_response._get_status_( ) >= 400 and list_response._get_status_( ) <= 499:
+                raise CSError(list_response._get_status_( ),
+                              list_response._get_reason_( ),
+                              'GET', self.bucketName, None, 
+                              list_response.error.code, 
+                              list_response.error.message, 
+                              list_response.error.request_id)
+            elif list_response._get_status_( ) >= 500:
+                raise CSError(list_response._get_status_( ),
+                              list_response._get_reason_( ),
+                              'GET', self.bucketName, None)
         except CSError, e:
-            logging.error ( str(e) )
             raise e
         except Exception, f:
-            logging.error ('ERROR %s' % f)
+            errLog.error ('ERROR %s' % f)
             raise f
         else:
-
-            dirContents = self._ListBucketResponse_( resp )
-
             if self.cb:
                 self.cb('KEYLIST', self.bucketName, prefixDir, self.count )
 
             topdir = self.dir_stack.pop()
 
-            for fileEntry in dirContents.entries:
-                full_name = fileEntry.key
+            for fileEntry in list_response.entries:
+                full_name = fileEntry.name
                 j = full_name.rfind(Util.DELIMITER)
                 if j == len(full_name) - 1:
                     continue
@@ -800,14 +819,16 @@ class SNDA_Bucket:
                     display_name = fileEntry.owner.display_name
                 else:
                     display_name = None
-                f = Util.my_file( fileEntry.key, file_name, topdir.depth+1, fileEntry.size, \
-                                  display_name, fileEntry.last_modified, fileEntry.etag, prefixDir )
+                f = Util.my_file( fileEntry.name, file_name, 
+                                  topdir.depth+1, fileEntry.size,
+                                  display_name, fileEntry.last_modified, 
+                                  fileEntry.etag, prefixDir )
 
                 topdir.add_child ( f )
                 self.bucketContent.append(f)
                 self.count = self.count + 1
 
-            for dirEntry in dirContents.common_prefixes:
+            for dirEntry in list_response.common_prefixes:
                 if not hasattr(dirEntry, 'prefix'):
                     continue
                 full_name = dirEntry.prefix[:-1]
@@ -821,20 +842,6 @@ class SNDA_Bucket:
                 self.dir_stack.append(d)
                 self.count = self.count + 1
                 
-#            for dirEntry in dirContents.common_prefixes:
-#                if not hasattr(dirEntry, 'prefix'):
-#                    continue
-#                full_name = dirEntry.prefix[:-1]
-#                j = full_name.rfind(Util.DELIMITER)
-#                
-#                dir_name = full_name[j+1:]                    
-#                d = topdir.get_child( dir_name)
-#                if not d:
-#                    raise Failed()
-#
-#                self.dir_stack.append(d)
-#                self.get_keys_in_bucket_as_fstree( dirEntry.prefix, delimiter )
-
             return (self.bucketContent, self.dir_stack)
     
     def upload_dir(self, root_dir):
@@ -881,30 +888,36 @@ class SNDA_Bucket:
         """
         
         if policy is '' or policy is None:
-            raise InvalidAttribute('policy is empty')
+            raise InvalidParameter(policy)
         
         metadata = headers = {}
         headers['Content-Length'] = len(policy)
         
         try:
             query_args = {"policy" : None}
-            resp = _Response_( self.CONN.make_request( 'PUT', bucket=self.bucketName, key='', 
+            response = _Response_( self.CONN.make_request( 'PUT', bucket=self.bucketName, key='', 
                                                        query_args=query_args, headers=headers,
                                                        data=policy, metadata=metadata) )
-            if (resp._get_status_( ) < 400 ):
+            if response._get_status_( ) >= 200 and response._get_status_( ) <= 299:
                 CS.commLog.debug('Set bucket %s policy' % self.bucketName )
-                if self.cb:
-                    self.cb ('PUT', self.bucketName, '', len(policy))
-    
-            if ( resp._get_status_( ) >= 400):
-                raise CSError(resp._get_status_( ), resp._get_reason_(), 'PUT', self.bucketName, '' )
-            
+                return response
+            elif response._get_status_( ) >= 400 and response._get_status_( ) <= 499:
+                raise CSError(response._get_status_( ),
+                              response._get_reason_( ),
+                              'PUT', self.bucketName, None, 
+                              response.error.code, 
+                              response.error.message, 
+                              response.error.request_id)
+            else:
+                raise CSError(response._get_status_( ),
+                              response._get_reason_( ),
+                              'PUT', self.bucketName, None)
+        except CSError, e:
+            raise e
         except Exception, f:
             errLog.error ('ERROR %s' % f )
             raise f
         
-        return (resp, hash)
-    
     def get_policy(self):
         """
         Get policy of self.bucketName
@@ -915,18 +928,23 @@ class SNDA_Bucket:
         
         try:
             query_args = {"policy" : None}
-            resp = _GETResponse_(self.CONN.make_request ( 'GET', bucket=self.bucketName, key='', query_args=query_args ))
-            status = resp._get_status_()
-            reason = resp._get_reason_()
-            
-            if status == 200:
+            response = _GETResponse_(self.CONN.make_request ( 'GET', bucket=self.bucketName, key='', query_args=query_args ))
+            if response._get_status_( ) >= 200 and response._get_status_( ) <= 299:
                 CS.commLog.debug('Got bucket %s policy' % self.bucketName)
-                
-            if ( status >= 400):
-                raise CSError(status, reason, 'GET', self.bucketName, '' )
-                  
-            return resp.body
-        
+                return response.body
+            elif response._get_status_( ) >= 400 and response._get_status_( ) <= 499:
+                raise CSError(response._get_status_( ),
+                              response._get_reason_( ),
+                              'GET', self.bucketName, None, 
+                              response.error.code, 
+                              response.error.message, 
+                              response.error.request_id)
+            else:
+                raise CSError(response._get_status_( ),
+                              response._get_reason_( ),
+                              'GET', self.bucketName, None)
+        except CSError, e:
+            raise e
         except Exception, f:
             errLog.error ('ERROR %s' % f )
             raise f
@@ -938,18 +956,23 @@ class SNDA_Bucket:
         
         try:
             query_args = {"policy" : None}
-            resp = _GETResponse_(self.CONN.make_request ( 'DELETE', bucket=self.bucketName, key='', query_args=query_args ))
-            status = resp._get_status_()
-            reason = resp._get_reason_()
-            
-            if status == 204:
+            response = _GETResponse_(self.CONN.make_request ( 'DELETE', bucket=self.bucketName, key='', query_args=query_args ))
+            if response._get_status_( ) >= 200 and response._get_status_( ) <= 299:
                 CS.commLog.debug('Delete bucket %s policy' % self.bucketName)
-                
-            if ( status >= 400):
-                raise CSError(status, reason, 'DELETE', self.bucketName, '' )
-                  
-            return resp.body
-        
+                return response.body
+            elif response._get_status_( ) >= 400 and response._get_status_( ) <= 499:
+                raise CSError(response._get_status_( ),
+                              response._get_reason_( ),
+                              'DELETE', self.bucketName, None, 
+                              response.error.code, 
+                              response.error.message, 
+                              response.error.request_id)
+            else:
+                raise CSError(response._get_status_( ),
+                              response._get_reason_( ),
+                              'DELETE', self.bucketName, None)
+        except CSError, e:
+            raise e
         except Exception, f:
             errLog.error ('ERROR %s' % f )
             raise f

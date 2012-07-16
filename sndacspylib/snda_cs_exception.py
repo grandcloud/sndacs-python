@@ -64,12 +64,18 @@ class CSInvalidAccessKeyId(Exception):
         return ( 'The SNDA Access Key Id you provided does not exist in our records.' )
 
 class InvalidAttribute(Exception):
-    
     def __init__(self, a):
         self.attrib = a
         
     def __str__(self):
         return 'Attribute=%s is Invalid!\n' % (self.attrib)
+    
+class InvalidParameter(Exception):
+    def __init__(self, param):
+        self.param = param
+    
+    def __str__(self):
+        return 'Parameter=%s is Invalid!\n' % (self.param)
     
 class CSNoSuchFile(Exception):
     def __init__(self, file):
