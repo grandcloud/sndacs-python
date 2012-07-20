@@ -625,6 +625,144 @@ class SNDA_Bucket:
 #                self.curr_text += content
                 self.curr_text = content
                 
+    class _ListMultipartUploadsResponse_(_Response_):
+        def __init__(self, http_response):
+            _Response_.__init__(self, http_response)
+            if self._get_status_() < httplib.MULTIPLE_CHOICES:
+                handler = self._ListMultipartUploadsHandler_()
+                xml.sax.parseString(self.body, handler)
+                self.bucket = handler.bucket
+                self.key_marker = handler.key_marker
+                self.upload_id_marker = handler.upload_id_marker
+                self.next_key_marker = handler.next_key_marker
+                self.next_upload_id_marker = handler.next_upload_id_marker
+                self.prefix = handler.prefix
+                self.delimeter = handler.delimeter
+                self.max_uploads = handler.max_uploads
+                self.is_truncated = handler.is_truncated
+                self.uploads = handler.uploads
+                self.common_prefixes = handler.common_prefixes
+            else:
+                self.entries = []
+        
+        class _ListMultipartUploadsHandler_(xml.sax.ContentHandler):
+            def __init__(self):
+                self.bucket = ''
+                self.key_marker = ''
+                self.upload_id_marker = ''
+                self.next_key_marker = ''
+                self.next_upload_id_marker = ''
+                self.prefix = ''
+                self.delimeter = ''
+                self.max_uploads = 0
+                self.is_truncated = False
+                self.uploads= []
+                self.common_prefixes = []
+                
+                self.curr_upload = None
+                self.curr_initiator = None
+                self.curr_owner = None
+                self.curr_common_prefix = None
+                self.curr_text = ''
+                
+                self.is_echoed_initiator_set = False
+                self.is_echoed_owner_set = False
+                self.is_echoed_prefix_set = False
+                
+            def startElement(self, name, attrs):
+                if name == 'Upload':
+                    self.curr_upload = self.Upload()
+                elif name == 'Initiator':
+                    self.curr_initiator = self.Initiator()
+                    self.is_echoed_initiator_set = True
+                elif name == 'Owner':
+                    self.curr_owner = self.Owner()
+                    self.is_echoed_owner_set = True
+                elif name == 'CommonPrefixes':
+                    self.curr_common_prefix = self.CommonPrefixes()
+                    self.is_echoed_prefix_set = True
+
+            def endElement(self, name):
+                if name == 'Bucket':
+                    self.bucket = self.curr_text
+                elif name == 'KeyMarker':
+                    self.key_marker = self.curr_text
+                elif name == 'UploadIdMarker':
+                    self.upload_id_marker = self.curr_text
+                elif name == 'NextKeyMarker':
+                    self.next_key_marker = self.curr_text
+                elif name == 'NextUploadIdMarker':
+                    self.next_upload_id_marker = self.curr_text
+                elif name == 'Prefix':
+                    if self.is_echoed_prefix_set is False:
+                        self.prefix = self.curr_text
+                    else:
+                        self.curr_common_prefix.prefix = self.curr_text
+                elif name == 'MaxUploads':
+                    self.max_uploads = int(self.curr_text)
+                elif name == 'IsTruncated':
+                    self.is_truncated = bool(self.curr_text)
+                elif name == 'Key':
+                    self.curr_upload.key = self.curr_text
+                elif name == 'UploadId':
+                    self.curr_upload.upload_id = self.curr_text
+                elif name == 'ID':
+                    if self.is_echoed_initiator_set is True:
+                        self.curr_initiator.id = self.curr_text
+                    elif self.is_echoed_owner_set is True:
+                        self.curr_owner.id = self.curr_text
+                elif name == 'DisplayName':
+                    if self.is_echoed_initiator_set is True:
+                        self.curr_initiator.display_name = self.curr_text
+                    elif self.is_echoed_owner_set is True:
+                        self.curr_owner.display_name = self.curr_text
+                elif name == 'Initiator':
+                    self.curr_upload.initiator = self.curr_initiator
+                    self.is_echoed_initiator_set = False
+                elif name == 'Owner':
+                    self.curr_upload.owner = self.curr_owner
+                    self.is_echoed_owner_set = False
+                elif name == 'StorageClass':
+                    self.curr_upload.storage_class = self.curr_text
+                elif name == 'Initiated':
+                    self.curr_upload.initiated = self.curr_text
+                    if IMPORT_FLAG:
+                        self.curr_upload.initiated = rfc3339.parse_datetime(self.curr_text)
+                    else:
+                        self.curr_upload.initiated = datetime.datetime.strptime(self.curr_text.split('+')[0],
+                                                                 "%Y-%m-%dT%H:%M:%S.%f")
+                elif name == 'Upload':
+                    self.uploads.append(self.curr_upload)
+                elif name == 'CommonPrefixes':
+                    self.common_prefixes.append(self.curr_common_prefix)
+                    self.is_echoed_prefix_set = False
+                    
+            def characters(self, content):
+                self.curr_text = content
+                
+            class Upload:
+                def __init__(self):
+                    self.key = ''
+                    self.upload_id = ''
+                    self.initiator = None
+                    self.owner = None
+                    self.storage_class = ''
+                    self.initiated = None
+                    
+            class Initiator:
+                def __init__(self):
+                    self.id = ''
+                    self.display_name = ''
+                    
+            class Owner:
+                def __init__(self):
+                    self.id = ''
+                    self.display_name = ''
+                    
+            class CommonPrefixes:
+                def __init__(self):
+                    self.prefix = ''
+                
     def _walk_dir_(self, start, cb_method, arg):
         """
         Walks an in-memory directory stucture starting at "start" and invokes the
@@ -882,6 +1020,45 @@ class SNDA_Bucket:
         except Exception, f:
             errLog.error ('ERROR %s' % f )
             raise f
+        
+    def list_multipart_uploads(self, key_marker=None, prefixDir=None, delimiter=None, upload_id_marker=None):
+        """
+        This operation lists in-progress multipart uploads.
+        An in-progress multipart upload is a multipart upload that has been initiated, 
+        using the Initiate Multipart Upload request, but has not yet been completed or aborted. 
+        """
+        
+        try:
+            query_args = {'uploads' : None}
+            if key_marker is not None and key_marker != '':
+                query_args['key-marker'] = key_marker
+            if prefixDir is not None and prefixDir != '':
+                query_args['prefix'] = prefixDir
+            if delimiter is not None and delimiter != '':
+                query_args['delimiter'] = delimiter
+            if upload_id_marker is not None and upload_id_marker != '':
+                query_args['upload-id-marker'] = upload_id_marker
+            resp = self.CONN.make_request ( method='GET', bucket=self.bucketName, \
+                                                query_args=query_args )
+            list_response = self._ListMultipartUploadsResponse_( resp )
+            if list_response._get_status_( ) >= 400 and list_response._get_status_( ) <= 499:
+                raise CSError(list_response._get_status_( ),
+                              list_response._get_reason_( ),
+                              'GET', self.bucketName, None, 
+                              list_response.error.code, 
+                              list_response.error.message, 
+                              list_response.error.request_id)
+            elif list_response._get_status_( ) >= 500:
+                raise CSError(list_response._get_status_( ),
+                              list_response._get_reason_( ),
+                              'GET', self.bucketName, None)
+        except CSError, e:
+            raise e
+        except Exception, f:
+            errLog.error ('ERROR %s' % f )
+            raise f
+        
+        return list_response
 
 class SNDA_Object:
     """

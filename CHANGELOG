@@ -2,6 +2,8 @@ head:
 
 0.1.1:
 
+- Add list multipart uploads in bucket method
+
 - Add multiupload unit test and update docs
 
 - Coordinate the error exception

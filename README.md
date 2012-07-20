@@ -95,6 +95,17 @@ sndacs library provides access to [SNDA Cloud Storage](http://www.grandcloud.cn/
 
     bucket.delete_policy()
 
+### List multipart uploads in bucket
+
+    list_result = bucket.list_multipart_uploads(key_marker='key-marker',
+                                                prefixDir='prefix',
+                                                delimiter='delimiter',
+                                                upload_id_marker='upload-id-marker')
+    for upload in list_result.uploads:
+        print upload.key, upload.initiated
+    for common_prefix in list_result.common_prefixes:
+        print common_prefix.prefix
+
 ### Initialize the object
 
     import sndacspylib.snda_cs.cs_util as CSUtil
