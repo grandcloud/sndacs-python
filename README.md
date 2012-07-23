@@ -115,6 +115,10 @@ sndacs library provides access to [SNDA Cloud Storage](http://www.grandcloud.cn/
 
     object.put_object_from_file("filepath/file")
 
+### Upload object as reduced redundency storage class
+
+    object.put_object_from_file("filepath/file", {'x-snda-storage-class' : 'REDUCED_REDUNDANCY'})
+
 ### Get object infomations
 
     infos = object.get_object_info()
