@@ -1081,6 +1081,58 @@ class SNDA_Object:
         self.bucketName = bucketName
         self.objectName = objectName
         self.cb = cb
+        
+    class _CopyObjectResponse_(_Response_):
+        
+        def __init__(self, http_repsonse):
+            _Response_.__init__(self, http_repsonse)
+            if self._get_status_() < httplib.MULTIPLE_CHOICES:
+                handler = self._CopyObjectHandler_()
+                xml.sax.parseString(self.body.strip().replace("&quot;", ""), handler)
+                self.copy_object_result = handler.copy_object_result
+                self.error = handler.error
+                
+        class _CopyObjectHandler_(xml.sax.ContentHandler):
+            
+            def __init__(self):
+                self.copy_object_result = None
+                self.error = None
+                self.curr_text = ''
+                
+            def startElement(self, name, attrs):
+                if name == 'CopyObjectResult':
+                    self.copy_object_result = self.CopyObjectResult()
+                if name == 'Error':
+                    self.error = self.Error()
+                    
+            def endElement(self, name):
+                if name == 'LastModified':
+                    self.copy_object_result.last_modified = self.curr_text
+                if name == 'ETag':
+                    self.copy_object_result.etag = self.curr_text
+                if name == 'Code':
+                    self.error.code = self.curr_text
+                if name == 'Message':
+                    self.error.message = self.curr_text
+                if name == 'Resource':
+                    self.error.resource = self.curr_text
+                if name == 'RequestId':
+                    self.error.request_id = self.curr_text
+            
+            def characters(self, content):
+                self.curr_text = content.encode('utf-8')
+                
+            class CopyObjectResult:
+                def __init__(self, last_modified='', etag=''):
+                    self.last_modified = last_modified
+                    self.etag = etag
+                    
+            class Error:
+                def __init__(self, code='', message='', resource='', request_id=''):
+                    self.code = code
+                    self.message = message
+                    self.resource = resource
+                    self.request_id = request_id
     
     class _InitiateMultiuploadResponse_(_Response_):
         
@@ -1379,7 +1431,7 @@ class SNDA_Object:
         connection.putrequest('PUT', self.CONN.path)
         
         for key in self.CONN.final_headers.keys():
-            connection.putheader(key, self.CONN.final_headers[key])
+            connection.putheader(key, str(self.CONN.final_headers[key]))
             
         connection.endheaders()
         while True:
@@ -1540,14 +1592,15 @@ class SNDA_Object:
             try:
                 response, h = self._stream_data_from_file_(fileName, headers)
                 if response._get_status_( ) >= 200 and response._get_status_( ) <= 299:
-                    digest = binascii.unhexlify(response._get_etag_())
-                    base64md5 = base64.encodestring(digest).strip()
-                    if base64md5 != h:
-                        errLog.error('Invalid hash. Local:%s, Remote:%s on uploading steam. Retry Count=%d' % \
-                                       (h, base64md5, numTries ))
-                        numTries += 1
-                        continue
-                    return response
+                    if (Config.CSProperties['CheckHash'] == 'True'):
+                        digest = binascii.unhexlify(response._get_etag_())
+                        base64md5 = base64.encodestring(digest).strip()
+                        if base64md5 != h:
+                            errLog.error('Invalid hash. Local:%s, Remote:%s on uploading steam. Retry Count=%d' % \
+                                           (h, base64md5, numTries ))
+                            numTries += 1
+                            continue
+                        return response
                 elif response._get_status_( ) >= 400 and response._get_status_( ) <= 499:
                     raise CSError(response._get_status_( ),
                                   response._get_reason_( ),
@@ -1626,6 +1679,29 @@ class SNDA_Object:
             except Exception, f:
                 errLog.error ('ERROR %s' % f )
                 numTries += 1
+        return response
+    
+    def copy_from_object(self, source_bucket, source_object, metadata_directive=None, if_match=None, if_none_match=None, if_unmodified_since=None, if_modified_since=None, metadata=None):
+        """
+        A PUT copy operation is the same as performing a GET and then a PUT. Adding the request header,
+        x-snda-copy-source, makes the PUT operation copy the source object into the destination bucket.
+        """
+        headers = {}
+        if metadata is None:
+            metadata = {}
+        headers['x-snda-copy-source'] = "/%s/%s" % (source_bucket, source_object)
+        if metadata_directive is not None: 
+            headers['x-snda-metadata-directive'] = metadata_directive
+        if if_match is not None: 
+            headers['x-snda-copy-source-if-match'] = if_match
+        if if_none_match is not None: 
+            headers['x-snda-copy-source-if-none-match'] = if_none_match
+        if if_unmodified_since is not None: 
+            headers['x-snda-copy-source-if-unmodified-since'] = if_unmodified_since
+        if if_modified_since is not None: 
+            headers['x-snda-copy-source-if-modified-since'] = if_modified_since
+        response = self._CopyObjectResponse_(self.CONN.make_request(method='PUT', bucket=self.bucketName, key=self.objectName, headers=headers, metadata=metadata))
+        
         return response
     
     def get_object_info(self):
