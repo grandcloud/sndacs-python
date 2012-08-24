@@ -2,6 +2,10 @@ head:
 
 0.1.1:
 
+- Fix checking hash bug
+
+- Add copy object in object method
+
 - Add list multipart uploads in bucket method
 
 - Add multiupload unit test and update docs
