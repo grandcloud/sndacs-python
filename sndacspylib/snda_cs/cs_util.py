@@ -1399,6 +1399,35 @@ class SNDA_Object:
             local_hash = fileHash.hexdigest()
             
         return resp, local_hash
+    
+    def _stream_data_to_file_with_signed_url_(self, signed_url, fileName):
+        if not fileName:
+            raise InvalidAttribute('fileName')
+        
+        fp = resp = 0
+        
+        parsed_url = urlparse(signed_url)
+        parsed_url_path = parsed_url.path.lstrip('/')
+        pos = parsed_url_path.find('/')
+        bucket_name = parsed_url_path[:pos]
+        object_name = parsed_url_path[pos+1:]
+        
+        resp = self.CONN.make_request ( 'GET', bucket=bucket_name, key=object_name, \
+                                                       headers={} )
+        if resp.status < 400:
+            appLog.debug('Got %s bytes' % resp.getheader('Content-Length'))
+            
+        if resp.status >= 400:
+            return resp
+        
+        if not fp:
+            fp = open(fileName, 'wb')
+            
+        fp.write(resp.read())
+        fp.flush()
+        fp.close()
+            
+        return resp
         
     def _stream_data_from_stream_(self, size, stream, query_args, headers, metadata):
         resp = hash = 0
@@ -1521,6 +1550,114 @@ class SNDA_Object:
 
         return (resp, hash)
     
+    def _stream_data_from_stream_with_signed_url_(self, signed_url, size, stream, query_args, headers, metadata):
+
+        resp = hash = 0
+        
+        if query_args is None:
+            query_args = {}
+        if headers is None:
+            headers = {}
+        if metadata is None:
+            metadata = {}
+        
+        if Config.CSProperties['CheckHash'] == 'True':
+            stream_hash = md5()
+            
+        headers['Content-Length'] = size
+        
+        if self.CONN.is_secure:
+            connection = httplib.HTTPSConnection('%s:%d' % (self.CONN.server, self.CONN.port))
+        else:
+            connection = httplib.HTTPConnection('%s:%d' % (self.CONN.server, self.CONN.port))
+            
+        parsed_url = urlparse(signed_url)
+        parsed_url_path = parsed_url.path.lstrip('/')
+        pos = parsed_url_path.find('/')
+        bucket_name = parsed_url_path[:pos]
+        object_name = parsed_url_path[pos+1:]
+        self.CONN.prepare_message('PUT', bucket_name, object_name, query_args, headers, metadata)
+        
+        connection.putrequest('PUT', signed_url)
+        
+        for key in self.CONN.final_headers.keys():
+            if key == "Authorization":
+                continue
+            connection.putheader(key, str(self.CONN.final_headers[key]))
+            
+        connection.endheaders()
+        while True:
+            if (size == 0):
+                CS.commLog.debug ('Zero length content, uploaded to %s(%s)' % \
+                                  (bucket_name, object_name) )
+            bytes = stream.read(Util.CHUNK_SIZE)
+
+            if not bytes:
+                break
+
+            if (Config.CSProperties['CheckHash'] == 'True'):
+                stream_hash.update ( bytes )
+
+                length = len(bytes)
+            connection.send(bytes)
+        if size == 0:
+            length = size
+
+        if (Config.CSProperties['CheckHash'] == 'True'):
+            hash = base64.encodestring(stream_hash.digest()).strip()
+            
+        resp = _Response_( connection.getresponse( ) )
+
+        CS.commLog.debug('RESP MSG: Status=%d(%s).  ---msg follows---\n%s' % \
+                         (resp._get_status_(), resp._get_reason_(), resp._get_msg_()  ) )
+        
+        if ( resp._get_status_( ) >= 200 and resp._get_status_( ) <= 299 ):
+            CS.commLog.debug('Sent %d bytes' % size)
+            if self.cb:
+                self.cb ('PUT', bucket_name, object_name, size)
+
+        connection.close()
+
+        return (resp, hash)
+    
+    def _stream_data_from_file_with_signed_url_(self, signed_url, fileName, headers):
+        
+        fp = resp = hash = 0
+        metadata = {}
+        if os.path.exists(fileName) == False:
+            raise CSNoSuchFile(fileName)
+        
+        #open file    
+        fp = open(fileName, 'rb')
+        
+        if (Config.CSProperties['CheckHash'] == 'True'):
+            stream_hash = md5()
+            while True:
+                bytes = fp.read(Util.CHUNK_SIZE)
+                if not bytes:
+                    break
+                stream_hash.update ( bytes )
+            if headers is None:
+                headers = {}
+            headers['Content-MD5'] = base64.encodestring(stream_hash.digest()).strip()
+            fp.seek(0)
+        
+        #get file size
+        size = _get_file_size_(fp)
+        
+        resp, hash = self._stream_data_from_stream_with_signed_url_(signed_url, size, fp, {}, headers, metadata)
+        
+        if ( resp._get_status_( ) == 301 ):
+            redirect_server = urlparse(resp.http_response.getheader('Location')).hostname
+            fp.seek(0)
+            self.CONN.server = redirect_server
+            signed_url = resp.http_response.getheader('Location')
+            resp, hash = self._stream_data_from_stream_with_signed_url_(signed_url, size, fp, {}, headers, metadata)
+        if fp:
+            fp.close( )
+
+        return (resp, hash)
+    
     def put_object_from_stream(self, size, stream, headers=None, metadata=None):
         """
         Streams a local file idenfied by fileName to the ECS object identified 
@@ -1600,7 +1737,7 @@ class SNDA_Object:
                                            (h, base64md5, numTries ))
                             numTries += 1
                             continue
-                        return response
+                    return response
                 elif response._get_status_( ) >= 400 and response._get_status_( ) <= 499:
                     raise CSError(response._get_status_( ),
                                   response._get_reason_( ),
@@ -1681,6 +1818,56 @@ class SNDA_Object:
                 numTries += 1
         return response
     
+    def put_object_from_file_with_signed_url(self, signed_url, fileName, headers=None):
+        """
+        Streams a local file idenfied by fileName using signed url to the ECS object identified 
+        by bucketName+keyName.
+        
+        @type signed_url: string
+        @param signed_url: signed url
+        @type fileName: string
+        @param fileName: file name
+        """
+        
+        numTries = fp = start = end = 0
+        
+        while numTries < _NUMBER_OF_RETRIES_:
+            try:
+                response, h = self._stream_data_from_file_with_signed_url_(signed_url, fileName, headers)
+                if response._get_status_( ) >= 200 and response._get_status_( ) <= 299:
+                    if (Config.CSProperties['CheckHash'] == 'True'):
+                        digest = binascii.unhexlify(response._get_etag_())
+                        base64md5 = base64.encodestring(digest).strip()
+                        if base64md5 != h:
+                            errLog.error('Invalid hash. Local:%s, Remote:%s on uploading steam. Retry Count=%d' % \
+                                           (h, base64md5, numTries ))
+                            numTries += 1
+                            continue
+                    return response
+                elif response._get_status_( ) >= 400 and response._get_status_( ) <= 499:
+                    raise CSError(status=response._get_status_( ),
+                                  reason=response._get_reason_( ),
+                                  method='PUT',  
+                                  code=response.error.code, 
+                                  message=response.error.message, 
+                                  request_id=response.error.request_id,
+                                  signed_url=signed_url)
+                else:
+                    raise CSError(status=response._get_status_( ),
+                                  reason=response._get_reason_( ),
+                                  method='PUT',
+                                  signed_url=signed_url)
+            except CSNoSuchFile, e1:
+                errLog.error(str(e1))
+                raise e1
+            except CSError, e2:
+                raise e2
+            except Exception, f:
+                errLog.error ('ERROR %s' % f )
+                numTries += 1
+                
+        return response
+    
     def copy_from_object(self, source_bucket, source_object, metadata_directive=None, if_match=None, if_none_match=None, if_unmodified_since=None, if_modified_since=None, metadata=None):
         """
         A PUT copy operation is the same as performing a GET and then a PUT. Adding the request header,
@@ -1722,7 +1909,36 @@ class SNDA_Object:
         except Exception, f:
             errLog.debug('ERROR %s' % f)
         
-        return None
+    def get_object_info_with_signed_url(self, signed_url):
+        try:
+            if self.CONN.is_secure:
+                connection = httplib.HTTPSConnection("%s:%d" % (self.CONN.server, self.CONN.port))
+            else:
+                connection = httplib.HTTPConnection("%s:%d" % (self.CONN.server, self.CONN.port))
+                
+            connection.request("HEAD", signed_url, None, self.CONN.final_headers)
+            response = _GETResponse_(connection.getresponse())
+            
+            if response._get_status_() == 301:
+                redirect_server = urlparse(response._get_header_('Location')).hostname
+                if self.CONN.is_secure:
+                    connection = httplib.HTTPSConnection("%s:%d" % (redirect_server, self.CONN.port))
+                else:
+                    connection = httplib.HTTPConnection("%s:%d" % (redirect_server, self.CONN.port))
+                connection.request("HEAD", signed_url, None, self.CONN.final_headers)
+                response = _GETResponse_(connection.getresponse())
+                
+            if response._get_status_() >= 200 and response._get_status_( ) <= 299:
+                return response.object
+            elif response._get_status_( ) >= 400:
+                raise CSError(status=response._get_status_( ),
+                              reason=response._get_reason_( ),
+                              method='HEAD',
+                              signed_url=signed_url)
+        except CSError, e:
+            raise e
+        except Exception, f:
+            errLog.debug('ERROR %s' % f)
     
     def get_object_to_stream(self):
         """
@@ -1805,6 +2021,32 @@ class SNDA_Object:
             except Exception, f:
                 errLog.error('ERROR %s' % f)
                 numTries += 1
+                
+    def get_object_to_file_with_signed_url(self, signed_url, fileName):
+        numTries = 0
+        while numTries < _NUMBER_OF_RETRIES_:
+            try:
+                response = self._stream_data_to_file_with_signed_url_(signed_url, fileName)
+                if response.status >= 200 and response.status <= 299:
+                    return
+                elif response.status >= 400 and response.status <= 499:
+                    raise CSError(status=response.status,
+                              reason=response.reason,
+                              method='GET',
+                              signed_url= signed_url)
+                else:
+                    raise CSError(status=response.status,
+                                  reason=response.reason,
+                                  method='GET',
+                                  signed_url= signed_url)
+            except CSNotFound, e1:
+                errLog.debug(str(e1))
+                raise e1
+            except CSError, e2:
+                raise e2
+            except Exception, f:
+                errLog.error('ERROR %s' % f)
+                numTries += 1
     
     def delete_object(self):
         """
@@ -1831,6 +2073,45 @@ class SNDA_Object:
             errLog.debug('ERROR %s' % f)
         
         return response
+    
+    def delete_object_with_signed_url(self, signed_url):
+        try:
+            if self.CONN.is_secure:
+                connection = httplib.HTTPSConnection("%s:%d" % (self.CONN.server, self.CONN.port))
+            else:
+                connection = httplib.HTTPConnection("%s:%d" % (self.CONN.server, self.CONN.port))
+                
+            connection.request("DELETE", signed_url, None, self.CONN.final_headers)
+            response = _GETResponse_(connection.getresponse())
+            
+            if response._get_status_() == 301:
+                redirect_server = urlparse(response._get_header_('Location')).hostname
+                if self.CONN.is_secure:
+                    connection = httplib.HTTPSConnection("%s:%d" % (redirect_server, self.CONN.port))
+                else:
+                    connection = httplib.HTTPConnection("%s:%d" % (redirect_server, self.CONN.port))
+                connection.request("DELETE", signed_url, None, {})
+                response = _GETResponse_(connection.getresponse())
+                
+            if response._get_status_() >= 200 and response._get_status_( ) <= 299:
+                return response
+            elif response._get_status_( ) >= 400 and response._get_status_( ) <= 499:
+                raise CSError(response._get_status_( ),
+                              response._get_reason_( ),
+                              'DELETE', None, None, 
+                              response.error.code, 
+                              response.error.message, 
+                              response.error.request_id,
+                              signed_url)
+            else:
+                raise CSError(status=response._get_status_( ),
+                              reason=response._get_reason_( ),
+                              method='DELETE', 
+                              signed_url=signed_url)
+        except CSError, e:
+            raise e
+        except Exception, f:
+            errLog.debug('ERROR %s' % f)
     
     def initiate_multipart_upload(self):
         """

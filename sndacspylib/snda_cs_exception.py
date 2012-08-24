@@ -3,7 +3,7 @@ Created on 2011-7-27
 '''
 
 class CSError(Exception):
-    def __init__(self, status, reason, method, bucket, key, code=0, message=0, request_id=0, end_point=0):
+    def __init__(self, status, reason, method, bucket=None, key=None, code=0, message=0, request_id=0, end_point=0, signed_url=None):
         self.status = status
         self.reason = reason
         self.method = method
@@ -13,10 +13,11 @@ class CSError(Exception):
         self.message = message
         self.request_id = request_id
         self.end_point = end_point
+        self.signed_url = signed_url
 
     def __str__(self):
-        return 'Error %d(%s). %s on bucket=%s, key=%s\n' % \
-               (self.status, self.reason, self.method, self.bucket, self.key)
+        return 'Error %d(%s). %s on bucket=%s, key=%s, signedUrl=%s\n' % \
+               (self.status, self.reason, self.method, self.bucket, self.key, self.signed_url)
                
 class CSInternalError(CSError):
     def __init__(self, status, reason, method, bucket, key):
