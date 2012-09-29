@@ -511,7 +511,7 @@ class SNDA_Bucket:
             _Response_.__init__(self, http_response)
             if self._get_status_() < httplib.MULTIPLE_CHOICES:
                 handler = self._ListBucketHandler_()
-                xml.sax.parseString(self.body, handler)
+                xml.sax.parseString(self.body.replace("&quot;", ""), handler)
                 self.entries = handler.entries
                 self.common_prefixes = handler.common_prefixes
                 self.name = handler.name
@@ -1396,7 +1396,7 @@ class SNDA_Object:
             fp.close()
             
         if Config.CSProperties['CheckHash'] == 'True':
-            local_hash = fileHash.hexdigest()
+            local_hash = base64.encodestring(fileHash.digest()).strip()
             
         return resp, local_hash
     
@@ -1411,6 +1411,8 @@ class SNDA_Object:
         pos = parsed_url_path.find('/')
         bucket_name = parsed_url_path[:pos]
         object_name = parsed_url_path[pos+1:]
+        self.bucketName = bucket_name
+        self.objectName = object_name
         
         resp = self.CONN.make_request ( 'GET', bucket=bucket_name, key=object_name, \
                                                        headers={} )
@@ -1576,6 +1578,8 @@ class SNDA_Object:
         pos = parsed_url_path.find('/')
         bucket_name = parsed_url_path[:pos]
         object_name = parsed_url_path[pos+1:]
+        self.bucketName = bucket_name
+        self.objectName = object_name
         self.CONN.prepare_message('PUT', bucket_name, object_name, query_args, headers, metadata)
         
         connection.putrequest('PUT', signed_url)
@@ -1911,6 +1915,12 @@ class SNDA_Object:
         
     def get_object_info_with_signed_url(self, signed_url):
         try:
+            parsed_url = urlparse(signed_url)
+            parsed_url_path = parsed_url.path.lstrip('/')
+            pos = parsed_url_path.find('/')
+            self.bucketName = parsed_url_path[:pos]
+            self.objectName = parsed_url_path[pos+1:]
+        
             if self.CONN.is_secure:
                 connection = httplib.HTTPSConnection("%s:%d" % (self.CONN.server, self.CONN.port))
             else:
@@ -1934,6 +1944,8 @@ class SNDA_Object:
                 raise CSError(status=response._get_status_( ),
                               reason=response._get_reason_( ),
                               method='HEAD',
+                              bucket=self.bucketName,
+                              key=self.objectName,
                               signed_url=signed_url)
         except CSError, e:
             raise e
@@ -2076,6 +2088,12 @@ class SNDA_Object:
     
     def delete_object_with_signed_url(self, signed_url):
         try:
+            parsed_url = urlparse(signed_url)
+            parsed_url_path = parsed_url.path.lstrip('/')
+            pos = parsed_url_path.find('/')
+            self.bucketName = parsed_url_path[:pos]
+            self.objectName = parsed_url_path[pos+1:]
+            
             if self.CONN.is_secure:
                 connection = httplib.HTTPSConnection("%s:%d" % (self.CONN.server, self.CONN.port))
             else:
@@ -2098,7 +2116,7 @@ class SNDA_Object:
             elif response._get_status_( ) >= 400 and response._get_status_( ) <= 499:
                 raise CSError(response._get_status_( ),
                               response._get_reason_( ),
-                              'DELETE', None, None, 
+                              'DELETE', self.bucketName, self.objectName, 
                               response.error.code, 
                               response.error.message, 
                               response.error.request_id,
@@ -2107,6 +2125,8 @@ class SNDA_Object:
                 raise CSError(status=response._get_status_( ),
                               reason=response._get_reason_( ),
                               method='DELETE', 
+                              bucket=self.bucketName,
+                              key=self.objectName,
                               signed_url=signed_url)
         except CSError, e:
             raise e

@@ -173,6 +173,13 @@ sndacs library provides access to [SNDA Cloud Storage](http://www.grandcloud.cn/
 
     object.complete_multipart_upload(object.init_result.upload_id, document.toxml())
 
+### create signed url
+
+    signed_put_url = connection.create_signed_put_url(bucket='testBucket', key='testKey', headers={}, metadata={}, expire=3000)
+    signed_get_url = connection.create_signed_get_url(bucket='testBucket', key='testKey', expire=3000)
+    signed_head_url = connection.create_signed_head_url(bucket='testBucket', key='testKey', expire=3000)
+    signed_delete_url = connection.create_signed_delete_url(bucket='testBucket', key='testKey', expire=3000)
+
 
 ## Copyright
 
