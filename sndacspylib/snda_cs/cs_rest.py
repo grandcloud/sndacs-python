@@ -398,7 +398,10 @@ class SNDAAuthConnection:
             
         #if needed to do the quote?
         if key != '':
-            self.path += '/%s' % urllib2.quote(key)
+            if isinstance(key, unicode):
+                self.path += '/%s' % urllib2.quote(key.encode('utf-8'))
+            else:
+                self.path += '/%s' % urllib2.quote(key)
             
         self.path += "?"
         self.path += query_args_hash_to_string(query_args)
